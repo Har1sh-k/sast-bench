@@ -105,13 +105,13 @@ def run_benchmark(scanner_name: str, track: str, output_path: Path | None, case_
                 message=rf.get("message", ""),
             ))
 
-        scoring = classify_findings(case, findings)
+        scoring, classifications = classify_findings(case, findings)
         all_scorings.append(scoring)
         all_cases.append(case)
 
-        # Build per-case result
+        # Build per-case result with per-finding audit trail
         finding_dicts = []
-        for f in findings:
+        for f, fc in zip(findings, classifications):
             finding_dicts.append({
                 "ruleId": f.rule_id,
                 "mappedKind": f.mapped_kind,
@@ -120,8 +120,8 @@ def run_benchmark(scanner_name: str, track: str, output_path: Path | None, case_
                 "endLine": f.end_line,
                 "severity": f.severity,
                 "message": f.message,
-                "matchedRegionId": None,
-                "classification": "unmatched",
+                "matchedRegionId": fc.matched_region_id,
+                "classification": fc.classification,
             })
 
         case_results.append({

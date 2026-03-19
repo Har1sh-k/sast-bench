@@ -53,9 +53,11 @@ def test_classify_true_positive():
         )
     ]
 
-    scoring = classify_findings(case, findings)
+    scoring, classifications = classify_findings(case, findings)
     assert scoring.true_positives == 1
     assert scoring.false_negatives == 0
+    assert classifications[0].classification == "true_positive"
+    assert classifications[0].matched_region_id == "R1"
 
 
 def test_classify_false_negative():
@@ -80,7 +82,7 @@ def test_classify_false_negative():
 
     findings = []  # No findings
 
-    scoring = classify_findings(case, findings)
+    scoring, classifications = classify_findings(case, findings)
     assert scoring.true_positives == 0
     assert scoring.false_negatives == 1
 
@@ -96,6 +98,7 @@ def test_classify_capability_false_positive():
                 "startLine": 10,
                 "endLine": 30,
                 "label": "capability_safe",
+                "capability": "code_execution",
                 "requiredGuards": ["allowlist"],
             }
         ],
@@ -105,6 +108,7 @@ def test_classify_capability_false_positive():
         },
     }
 
+    # Kind matches capability: command_injection -> code_execution
     findings = [
         Finding(
             rule_id="python.subprocess",
@@ -115,9 +119,48 @@ def test_classify_capability_false_positive():
         )
     ]
 
-    scoring = classify_findings(case, findings)
+    scoring, classifications = classify_findings(case, findings)
     assert scoring.capability_false_positives == 1
     assert scoring.true_positives == 0
+    assert classifications[0].classification == "capability_false_positive"
+
+
+def test_classify_capability_safe_kind_mismatch():
+    """Finding with wrong kind for the capability should NOT count as cap FP."""
+    case = {
+        "id": "SB-PY-CS-001",
+        "caseType": "capability_safe",
+        "regions": [
+            {
+                "id": "R1",
+                "path": "project/tools/runner.py",
+                "startLine": 10,
+                "endLine": 30,
+                "label": "capability_safe",
+                "capability": "code_execution",
+                "requiredGuards": ["allowlist"],
+            }
+        ],
+        "expectedOutcome": {
+            "mustDetectRegionIds": [],
+            "mustNotFlagRegionIds": ["R1"],
+        },
+    }
+
+    # ssrf does NOT match code_execution capability
+    findings = [
+        Finding(
+            rule_id="python.ssrf",
+            mapped_kind="ssrf",
+            path="project/tools/runner.py",
+            start_line=15,
+            end_line=20,
+        )
+    ]
+
+    scoring, _ = classify_findings(case, findings)
+    assert scoring.capability_false_positives == 0
+    assert scoring.false_positives == 1
 
 
 def test_classify_mixed_intent():
@@ -131,6 +174,7 @@ def test_classify_mixed_intent():
                 "startLine": 10,
                 "endLine": 30,
                 "label": "capability_safe",
+                "capability": "network",
                 "requiredGuards": ["host_allowlist"],
             },
             {
@@ -159,7 +203,7 @@ def test_classify_mixed_intent():
         )
     ]
 
-    scoring = classify_findings(case, findings)
+    scoring, _ = classify_findings(case, findings)
     assert scoring.true_positives == 1
     assert scoring.false_negatives == 0
     assert scoring.capability_false_positives == 0
@@ -194,6 +238,7 @@ if __name__ == "__main__":
     test_classify_true_positive()
     test_classify_false_negative()
     test_classify_capability_false_positive()
+    test_classify_capability_safe_kind_mismatch()
     test_classify_mixed_intent()
     test_compute_summary_perfect()
     print("All tests passed.")
