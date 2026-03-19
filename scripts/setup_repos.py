@@ -3,6 +3,9 @@
 Clones and pins real-world repositories at their vulnerable commits
 for Full Track benchmark cases.
 
+Each snapshot is stored at .repos/<owner_repo>__<shortsha>/ so that
+multiple advisories from the same repo at different commits don't collide.
+
 Usage:
     python scripts/setup_repos.py
 """
@@ -15,6 +18,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FULL_CASES_DIR = REPO_ROOT / "cases" / "full"
 REPOS_DIR = REPO_ROOT / ".repos"
+
+
+def repo_dir_name(repo: str, commit: str) -> str:
+    """Build a unique directory name for a repo at a specific commit."""
+    owner_repo = repo.replace("/", "_")
+    short_sha = commit[:8]
+    return f"{owner_repo}__{short_sha}"
 
 
 def find_real_world_cases() -> list[tuple[Path, dict]]:
@@ -31,7 +41,7 @@ def find_real_world_cases() -> list[tuple[Path, dict]]:
 def clone_and_pin(repo: str, commit: str, target_dir: Path) -> bool:
     """Clone a repo and checkout a specific commit."""
     if target_dir.exists():
-        print(f"    Already exists: {target_dir}")
+        print(f"    Already exists: {target_dir.name}")
         return True
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -78,8 +88,9 @@ def main() -> int:
             print(f"  [{case['id']}] Missing repo or commit metadata, skipping")
             continue
 
-        print(f"  [{case['id']}] {repo} @ {commit[:8]}")
-        target = REPOS_DIR / repo.replace("/", "_")
+        dir_name = repo_dir_name(repo, commit)
+        print(f"  [{case['id']}] {repo} @ {commit[:8]} -> .repos/{dir_name}")
+        target = REPOS_DIR / dir_name
 
         if clone_and_pin(repo, commit, target):
             success += 1

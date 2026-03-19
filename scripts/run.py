@@ -22,8 +22,12 @@ CASES_DIR = REPO_ROOT / "cases"
 ADAPTERS_DIR = REPO_ROOT / "adapters"
 
 
-def find_cases(track: str, case_type: str | None = None) -> list[tuple[Path, dict]]:
-    """Find all cases for the given track, optionally filtered by case type."""
+def find_cases(
+    track: str,
+    case_type: str | None = None,
+    case_id: str | None = None,
+) -> list[tuple[Path, dict]]:
+    """Find cases, optionally filtered by case type or specific case ID."""
     cases = []
 
     if track == "core":
@@ -39,6 +43,8 @@ def find_cases(track: str, case_type: str | None = None) -> list[tuple[Path, dic
             with open(case_json) as f:
                 case = json.load(f)
             if case_type and case["caseType"] != case_type:
+                continue
+            if case_id and case["id"] != case_id:
                 continue
             cases.append((case_json.parent, case))
 
@@ -63,10 +69,16 @@ def load_adapter(scanner_name: str):
     return adapter
 
 
-def run_benchmark(scanner_name: str, track: str, output_path: Path | None, case_type: str | None = None) -> int:
+def run_benchmark(
+    scanner_name: str,
+    track: str,
+    output_path: Path | None,
+    case_type: str | None = None,
+    case_id: str | None = None,
+) -> int:
     """Run the benchmark and produce results."""
     adapter = load_adapter(scanner_name)
-    cases = find_cases(track, case_type)
+    cases = find_cases(track, case_type, case_id)
 
     if not cases:
         print("No cases found.")
@@ -194,9 +206,13 @@ def main() -> int:
         choices=["synthetic_vulnerable", "capability_safe", "mixed_intent", "real_world_disclosed"],
         help="Filter to a specific case type",
     )
+    parser.add_argument(
+        "--case-id",
+        help="Run a single case by ID (e.g. SB-TS-RW-001)",
+    )
     args = parser.parse_args()
 
-    return run_benchmark(args.scanner, args.track, args.output, args.case_type)
+    return run_benchmark(args.scanner, args.track, args.output, args.case_type, args.case_id)
 
 
 if __name__ == "__main__":
