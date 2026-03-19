@@ -1,0 +1,18 @@
+{
+  "name": "SASTbench",
+  "version": "1.0.0-dev",
+  "description": "Benchmark for evaluating SAST tools on agentic codebases",
+  "tracks": {
+    "core": {
+      "description": "Self-contained vendored cases. No external repos required.",
+      "casesDir": "cases/core/"
+    },
+    "full": {
+      "description": "Core Track plus pinned snapshots from real public repositories.",
+      "casesDir": "cases/full/"
+    }
+  },
+  "languages": ["python", "typescript", "rust"],
+  "canonicalKinds": ["command_injection", "path_traversal", "ssrf"],
+  "schemaVersion": "1.0.0"
+}
