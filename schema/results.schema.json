@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sastbench.dev/schema/results.schema.json",
+  "title": "SASTbench Results",
+  "description": "Schema for normalized scanner results from a SASTbench run",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "benchmarkVersion",
+    "scanner",
+    "track",
+    "timestamp",
+    "caseResults",
+    "summary"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "benchmarkVersion": {
+      "type": "string",
+      "description": "SASTbench version used for this run"
+    },
+    "scanner": {
+      "type": "object",
+      "required": ["name", "version", "adapter"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Scanner name, e.g. semgrep"
+        },
+        "version": {
+          "type": "string",
+          "description": "Scanner version string"
+        },
+        "adapter": {
+          "type": "string",
+          "description": "Adapter version used for normalization"
+        }
+      },
+      "additionalProperties": false
+    },
+    "track": {
+      "type": "string",
+      "enum": ["core", "full"]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of the run"
+    },
+    "caseResults": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/caseResult"
+      }
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "caseResult": {
+      "type": "object",
+      "required": ["caseId", "findings", "scoring"],
+      "properties": {
+        "caseId": {
+          "type": "string",
+          "description": "The benchmark case ID"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "scoring": {
+          "$ref": "#/$defs/caseScoring"
+        }
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["ruleId", "mappedKind", "path", "startLine", "endLine"],
+      "properties": {
+        "ruleId": {
+          "type": "string",
+          "description": "Original rule ID from the scanner"
+        },
+        "mappedKind": {
+          "type": "string",
+          "enum": ["command_injection", "path_traversal", "ssrf", "unmapped"],
+          "description": "Canonical kind this finding maps to"
+        },
+        "path": {
+          "type": "string",
+          "description": "File path relative to the case root"
+        },
+        "startLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Scanner-reported severity (display only, not scored)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Scanner-reported message"
+        },
+        "matchedRegionId": {
+          "type": ["string", "null"],
+          "description": "Region ID this finding overlaps with, if any"
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "true_positive",
+            "capability_false_positive",
+            "false_positive",
+            "unmatched"
+          ],
+          "description": "Benchmark classification of this finding"
+        }
+      },
+      "additionalProperties": false
+    },
+    "caseScoring": {
+      "type": "object",
+      "required": ["truePositives", "falseNegatives", "capabilityFalsePositives"],
+      "properties": {
+        "truePositives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "falseNegatives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "falsePositives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capabilityFalsePositives": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "recall",
+        "precision",
+        "capabilityFpRate",
+        "mixedIntentAccuracy",
+        "agenticScore"
+      ],
+      "properties": {
+        "recall": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "precision": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "capabilityFpRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mixedIntentAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "agenticScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "geometric_mean(recall, 1 - capabilityFpRate, mixedIntentAccuracy)"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

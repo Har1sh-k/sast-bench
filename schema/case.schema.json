@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sastbench.dev/schema/case.schema.json",
+  "title": "SASTbench Case Definition",
+  "description": "Schema for a SASTbench benchmark case with region-level annotations",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "id",
+    "track",
+    "caseType",
+    "language",
+    "canonicalKind",
+    "files",
+    "regions",
+    "expectedOutcome"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Schema version for this case definition"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^SB-[A-Z]{2}-[A-Z]{2,3}-[0-9]{3}$",
+      "description": "Unique case identifier, e.g. SB-PY-SV-001"
+    },
+    "track": {
+      "type": "string",
+      "enum": ["core", "full"],
+      "description": "Benchmark track this case belongs to"
+    },
+    "caseType": {
+      "type": "string",
+      "enum": [
+        "synthetic_vulnerable",
+        "capability_safe",
+        "mixed_intent",
+        "real_world_disclosed"
+      ],
+      "description": "The type of benchmark case"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["python", "typescript", "rust"],
+      "description": "Primary language of the case"
+    },
+    "canonicalKind": {
+      "type": "string",
+      "enum": ["command_injection", "path_traversal", "ssrf"],
+      "description": "The primary canonical vulnerability kind"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short human-readable title for the case"
+    },
+    "description": {
+      "type": "string",
+      "description": "One-paragraph description of the case scenario"
+    },
+    "files": {
+      "type": "object",
+      "required": ["root"],
+      "properties": {
+        "root": {
+          "type": "string",
+          "description": "Relative path to the scannable project root"
+        }
+      },
+      "additionalProperties": false
+    },
+    "regions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/region"
+      },
+      "description": "Annotated regions within the case"
+    },
+    "expectedOutcome": {
+      "type": "object",
+      "required": ["mustDetectRegionIds"],
+      "properties": {
+        "mustDetectRegionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Region IDs that scanners must flag as vulnerable"
+        },
+        "mustNotFlagRegionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Region IDs that scanners must not flag"
+        }
+      },
+      "additionalProperties": false
+    },
+    "realWorld": {
+      "$ref": "#/$defs/realWorldMeta",
+      "description": "Metadata for real_world_disclosed cases"
+    }
+  },
+  "additionalProperties": false,
+  "if": {
+    "properties": { "caseType": { "const": "real_world_disclosed" } }
+  },
+  "then": {
+    "required": ["realWorld"]
+  },
+  "$defs": {
+    "region": {
+      "type": "object",
+      "required": ["id", "path", "startLine", "endLine", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique region identifier within this case"
+        },
+        "path": {
+          "type": "string",
+          "description": "Relative path to the file containing this region"
+        },
+        "startLine": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "First line of the annotated region (1-indexed)"
+        },
+        "endLine": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Last line of the annotated region (1-indexed)"
+        },
+        "label": {
+          "type": "string",
+          "enum": ["vulnerable", "capability_safe"],
+          "description": "Whether this region is vulnerable or intentionally safe"
+        },
+        "capability": {
+          "type": "string",
+          "enum": ["code_execution", "filesystem", "network"],
+          "description": "The capability family exercised by this region"
+        },
+        "acceptedKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["command_injection", "path_traversal", "ssrf"]
+          },
+          "description": "Canonical kinds that count as a match for this region"
+        },
+        "requiredGuards": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "allowlist",
+              "workspace_root",
+              "host_allowlist",
+              "scheme_allowlist"
+            ]
+          },
+          "description": "Guard contracts that make a capability_safe region safe"
+        }
+      },
+      "additionalProperties": false
+    },
+    "realWorldMeta": {
+      "type": "object",
+      "required": ["repo", "vulnerableCommit", "fixCommit"],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "GitHub repo in owner/name format"
+        },
+        "vulnerableCommit": {
+          "type": "string",
+          "description": "Git commit SHA of the vulnerable snapshot"
+        },
+        "fixCommit": {
+          "type": "string",
+          "description": "Git commit SHA of the fix"
+        },
+        "ghsa": {
+          "type": "string",
+          "pattern": "^GHSA-",
+          "description": "GitHub Security Advisory ID"
+        },
+        "cve": {
+          "type": "string",
+          "pattern": "^CVE-",
+          "description": "CVE identifier if available"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
