@@ -14,15 +14,15 @@ def scan(scan_root: Path, language: str) -> list[dict]:
     """Run the scanner and return normalized findings.
 
     Each finding dict must have:
-      - ruleId: str       — original scanner rule ID
-      - mappedKind: str   — canonical kind (command_injection, path_traversal, ssrf, unmapped)
-      - path: str         — file path relative to scan_root
-      - startLine: int    — first line of the finding
-      - endLine: int      — last line of the finding
+      - ruleId: str       - original scanner rule ID
+      - mappedKind: str   - canonical kind (command_injection, path_traversal, ssrf, unmapped)
+      - path: str         - file path relative to scan_root
+      - startLine: int    - first line of the finding
+      - endLine: int      - last line of the finding
 
     Optional fields:
-      - severity: str     — low, medium, high, critical
-      - message: str      — scanner-reported message
+      - severity: str     - low, medium, high, critical
+      - message: str      - scanner-reported message
     """
     ...
 ```
@@ -33,6 +33,16 @@ def scan(scan_root: Path, language: str) -> list[dict]:
 |---------|---------|-----------|
 | `semgrep/` | Semgrep | Python, TypeScript, Rust |
 | `bandit/` | Bandit | Python only |
+
+These are the only baseline adapters intended for official leaderboard runs today.
+
+## Experimental Adapters
+
+- `xfire/`
+- `securevibes/`
+- `securevibes-agent/`
+
+Experimental adapters are useful for local comparison work, but they are not part of the official baseline until they meet the same reproducibility and path-plus-line fidelity requirements as the baseline adapters.
 
 ## Adding a New Adapter
 
