@@ -22,8 +22,8 @@ CASES_DIR = REPO_ROOT / "cases"
 ADAPTERS_DIR = REPO_ROOT / "adapters"
 
 
-def find_cases(track: str) -> list[tuple[Path, dict]]:
-    """Find all cases for the given track."""
+def find_cases(track: str, case_type: str | None = None) -> list[tuple[Path, dict]]:
+    """Find all cases for the given track, optionally filtered by case type."""
     cases = []
 
     if track == "core":
@@ -38,6 +38,8 @@ def find_cases(track: str) -> list[tuple[Path, dict]]:
         for case_json in sorted(search_dir.rglob("case.json")):
             with open(case_json) as f:
                 case = json.load(f)
+            if case_type and case["caseType"] != case_type:
+                continue
             cases.append((case_json.parent, case))
 
     return cases
@@ -61,10 +63,10 @@ def load_adapter(scanner_name: str):
     return adapter
 
 
-def run_benchmark(scanner_name: str, track: str, output_path: Path | None) -> int:
+def run_benchmark(scanner_name: str, track: str, output_path: Path | None, case_type: str | None = None) -> int:
     """Run the benchmark and produce results."""
     adapter = load_adapter(scanner_name)
-    cases = find_cases(track)
+    cases = find_cases(track, case_type)
 
     if not cases:
         print("No cases found.")
@@ -187,9 +189,14 @@ def main() -> int:
     parser.add_argument("--scanner", required=True, help="Scanner adapter name")
     parser.add_argument("--track", default="core", choices=["core", "full"])
     parser.add_argument("--output", "-o", type=Path, help="Output JSON file path")
+    parser.add_argument(
+        "--case-type",
+        choices=["synthetic_vulnerable", "capability_safe", "mixed_intent", "real_world_disclosed"],
+        help="Filter to a specific case type",
+    )
     args = parser.parse_args()
 
-    return run_benchmark(args.scanner, args.track, args.output)
+    return run_benchmark(args.scanner, args.track, args.output, args.case_type)
 
 
 if __name__ == "__main__":
