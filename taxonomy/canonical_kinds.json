@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0.0",
+  "canonicalKinds": [
+    {
+      "id": "command_injection",
+      "name": "Command Injection",
+      "description": "Untrusted input reaches a command execution sink without proper validation or allowlisting",
+      "capabilitySurface": "code_execution",
+      "cweMappings": ["CWE-78", "CWE-77"],
+      "agenticContext": "Agentic systems often execute commands as a core capability. The vulnerability occurs when user-controlled or model-controlled input reaches the execution sink without a guard such as a command allowlist."
+    },
+    {
+      "id": "path_traversal",
+      "name": "Path Traversal",
+      "description": "Untrusted input controls file paths without workspace-root enforcement or path canonicalization",
+      "capabilitySurface": "filesystem",
+      "cweMappings": ["CWE-22", "CWE-23", "CWE-36"],
+      "agenticContext": "Agentic systems often read and write files as a core capability. The vulnerability occurs when user-controlled or model-controlled paths escape the intended workspace root."
+    },
+    {
+      "id": "ssrf",
+      "name": "Server-Side Request Forgery",
+      "description": "Untrusted input controls outbound request targets without host or scheme restrictions",
+      "capabilitySurface": "network",
+      "cweMappings": ["CWE-918"],
+      "agenticContext": "Agentic systems often make outbound network requests as a core capability. The vulnerability occurs when user-controlled or model-controlled URLs reach the request sink without a host allowlist or scheme restriction."
+    }
+  ]
+}
