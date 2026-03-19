@@ -19,8 +19,18 @@ python scripts/report.py results/
 
 ## Tracks
 
-- **Core Track** --Self-contained, vendored cases. 5-minute quickstart, deterministic runs.
-- **Full Track** --Core Track plus pinned snapshots from real public repositories.
+- **Core Track**: Self-contained, vendored cases. 5-minute quickstart, deterministic runs.
+- **Full Track**: Core Track plus pinned snapshots from real public repositories.
+
+## Status
+
+- Core Track is implemented and validated.
+- Full Track scaffolding exists, but `v1.0.0` still requires at least 3 `real_world_disclosed` cases.
+
+## Official Adapters
+
+- `semgrep`
+- `bandit`
 
 ## V1 Canonical Vulnerability Kinds
 
@@ -34,23 +44,23 @@ python scripts/report.py results/
 
 **Agentic Score** = geometric_mean(Recall, 1 - Capability FP Rate, Mixed-Intent Accuracy)
 
-- **Recall** --rewards real vulnerability detection
-- **1 - Capability FP Rate** --rewards low noise on intentional capability code
-- **Mixed-Intent Accuracy** --rewards correct boundary understanding inside one repo
+- **Recall**: rewards real vulnerability detection
+- **1 - Capability FP Rate**: rewards low noise on intentional capability code
+- **Mixed-Intent Accuracy**: rewards correct boundary understanding inside one repo
 
 ## Repository Layout
 
-```
+```text
 sastbench/
-├── manifest.json
-├── schema/            # JSON schemas for cases and results
-├── taxonomy/          # Canonical kinds, capabilities, languages
-├── cases/
-│   ├── core/          # Synthetic vendored cases
-│   └── full/          # Real-world disclosed cases
-├── adapters/          # Scanner adapters (semgrep, bandit, etc.)
-├── scripts/           # run, validate, report
-└── tests/             # Benchmark self-tests
+|- manifest.json
+|- schema/            # JSON schemas for cases and results
+|- taxonomy/          # Canonical kinds, capabilities, languages
+|- cases/
+|  |- core/           # Synthetic vendored cases
+|  `- full/           # Real-world disclosed cases
+|- adapters/          # Scanner adapters (semgrep, bandit, etc.)
+|- scripts/           # run, validate, report
+`- tests/             # Benchmark self-tests
 ```
 
 ## License
