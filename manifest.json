@@ -2,6 +2,13 @@
   "name": "SASTbench",
   "version": "1.0.0-dev",
   "description": "Benchmark for evaluating SAST tools on agentic codebases",
+  "releaseBar": {
+    "coreTrackCases": 12,
+    "fullTrackCases": 3,
+    "totalCases": 15,
+    "officialAdapters": 2,
+    "note": "v1.0.0 requires Full Track with at least 3 real_world_disclosed cases"
+  },
   "tracks": {
     "core": {
       "description": "Self-contained vendored cases. No external repos required.",
