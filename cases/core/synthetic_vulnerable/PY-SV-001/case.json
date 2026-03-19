@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/reference_fetcher.py",
+      "path": "tools/reference_fetcher.py",
       "startLine": 15,
       "endLine": 34,
       "label": "vulnerable",

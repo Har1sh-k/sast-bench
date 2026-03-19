@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/url_fetcher.ts",
+      "path": "tools/url_fetcher.ts",
       "startLine": 16,
       "endLine": 47,
       "label": "vulnerable",

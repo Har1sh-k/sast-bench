@@ -118,7 +118,7 @@
         },
         "path": {
           "type": "string",
-          "description": "Relative path to the file containing this region"
+          "description": "Path to the file relative to files.root (scan_root)"
         },
         "startLine": {
           "type": "integer",

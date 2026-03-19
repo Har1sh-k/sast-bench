@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/api_client.ts",
+      "path": "tools/api_client.ts",
       "startLine": 18,
       "endLine": 65,
       "label": "capability_safe",

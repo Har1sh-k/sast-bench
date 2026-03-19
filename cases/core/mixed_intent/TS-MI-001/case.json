@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/navigator.ts",
+      "path": "tools/navigator.ts",
       "startLine": 28,
       "endLine": 61,
       "label": "capability_safe",
@@ -22,7 +22,7 @@
     },
     {
       "id": "R2",
-      "path": "project/tools/screenshot_helper.ts",
+      "path": "tools/screenshot_helper.ts",
       "startLine": 30,
       "endLine": 65,
       "label": "vulnerable",

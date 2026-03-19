@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/command_runner.ts",
+      "path": "tools/command_runner.ts",
       "startLine": 22,
       "endLine": 52,
       "label": "vulnerable",

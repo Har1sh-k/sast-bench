@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/src/tools/maintenance.rs",
+      "path": "src/tools/maintenance.rs",
       "startLine": 16,
       "endLine": 48,
       "label": "capability_safe",
@@ -22,7 +22,7 @@
     },
     {
       "id": "R2",
-      "path": "project/src/tools/debug_exec.rs",
+      "path": "src/tools/debug_exec.rs",
       "startLine": 23,
       "endLine": 46,
       "label": "vulnerable",

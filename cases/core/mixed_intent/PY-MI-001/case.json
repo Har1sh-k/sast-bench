@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/clinical_fetcher.py",
+      "path": "tools/clinical_fetcher.py",
       "startLine": 14,
       "endLine": 51,
       "label": "capability_safe",
@@ -22,7 +22,7 @@
     },
     {
       "id": "R2",
-      "path": "project/tools/preview_fetcher.py",
+      "path": "tools/preview_fetcher.py",
       "startLine": 15,
       "endLine": 48,
       "label": "vulnerable",

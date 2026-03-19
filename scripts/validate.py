@@ -119,7 +119,8 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
                 errors.append(ValidationError(case_id, f"Region {rid}: vulnerable region must have acceptedKinds"))
 
         # Check file exists and line range is valid
-        region_path = case_dir / region.get("path", "")
+        # Region paths are relative to scan_root (files.root), not case_dir
+        region_path = root_path / region.get("path", "")
         if not region_path.exists():
             errors.append(ValidationError(case_id, f"Region {rid}: file does not exist: {region.get('path')}"))
         else:

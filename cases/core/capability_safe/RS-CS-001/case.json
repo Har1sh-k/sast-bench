@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/src/tools/file_mover.rs",
+      "path": "src/tools/file_mover.rs",
       "startLine": 25,
       "endLine": 122,
       "label": "capability_safe",

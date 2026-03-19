@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/command_runner.py",
+      "path": "tools/command_runner.py",
       "startLine": 39,
       "endLine": 101,
       "label": "capability_safe",

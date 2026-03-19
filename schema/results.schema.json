@@ -97,7 +97,7 @@
         },
         "path": {
           "type": "string",
-          "description": "File path relative to the case root"
+          "description": "File path relative to scan_root (files.root)"
         },
         "startLine": {
           "type": "integer",

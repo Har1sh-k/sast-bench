@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/src/tools/build_runner.rs",
+      "path": "src/tools/build_runner.rs",
       "startLine": 23,
       "endLine": 100,
       "label": "vulnerable",

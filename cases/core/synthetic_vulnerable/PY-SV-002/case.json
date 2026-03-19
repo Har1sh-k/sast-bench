@@ -13,7 +13,7 @@
   "regions": [
     {
       "id": "R1",
-      "path": "project/tools/file_writer.py",
+      "path": "tools/file_writer.py",
       "startLine": 12,
       "endLine": 35,
       "label": "vulnerable",
