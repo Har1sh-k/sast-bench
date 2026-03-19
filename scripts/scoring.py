@@ -187,14 +187,22 @@ def compute_summary(scorings: list[CaseScoring], cases: list[dict]) -> Summary:
     precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
 
     # Capability FP Rate
-    total_cap_safe = sum(
-        1 for c in cases
-        for r in c["regions"] if r["label"] == "capability_safe"
-    )
+    # Plan section 12 defines this as:
+    # capability_safe_cases_flagged / total_capability_safe_cases
+    cap_safe_case_ids = {
+        c["id"]
+        for c in cases
+        if any(r["label"] == "capability_safe" for r in c["regions"])
+    }
     cap_safe_flagged = sum(
-        1 for s in scorings if s.capability_false_positives > 0
+        1
+        for s in scorings
+        if s.case_id in cap_safe_case_ids and s.capability_false_positives > 0
     )
-    capability_fp_rate = cap_safe_flagged / total_cap_safe if total_cap_safe > 0 else 0.0
+    capability_fp_rate = (
+        cap_safe_flagged / len(cap_safe_case_ids)
+        if cap_safe_case_ids else 0.0
+    )
 
     # Mixed-Intent Accuracy
     mi_cases = [c for c in cases if c["caseType"] == "mixed_intent"]

@@ -231,6 +231,45 @@ def test_compute_summary_perfect():
     assert summary.agentic_score == 1.0
 
 
+def test_capability_fp_rate_counts_cases_not_regions():
+    cases = [
+        {
+            "id": "SB-PY-CS-001",
+            "caseType": "capability_safe",
+            "regions": [
+                {"label": "capability_safe"},
+                {"label": "capability_safe"},
+            ],
+        },
+        {
+            "id": "SB-PY-MI-001",
+            "caseType": "mixed_intent",
+            "regions": [
+                {"label": "vulnerable"},
+                {"label": "capability_safe"},
+            ],
+        },
+    ]
+
+    from scoring import CaseScoring
+
+    scorings = [
+        CaseScoring(
+            case_id="SB-PY-CS-001",
+            case_type="capability_safe",
+            capability_false_positives=2,
+        ),
+        CaseScoring(
+            case_id="SB-PY-MI-001",
+            case_type="mixed_intent",
+            capability_false_positives=0,
+        ),
+    ]
+
+    summary = compute_summary(scorings, cases)
+    assert summary.capability_fp_rate == 0.5
+
+
 if __name__ == "__main__":
     test_regions_overlap_same_file()
     test_regions_no_overlap()
@@ -241,4 +280,5 @@ if __name__ == "__main__":
     test_classify_capability_safe_kind_mismatch()
     test_classify_mixed_intent()
     test_compute_summary_perfect()
+    test_capability_fp_rate_counts_cases_not_regions()
     print("All tests passed.")
