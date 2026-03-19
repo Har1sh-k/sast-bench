@@ -162,7 +162,17 @@
           "description": "Guard contracts that make a capability_safe region safe"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "label": { "const": "capability_safe" } } },
+          "then": { "required": ["requiredGuards", "capability"] }
+        },
+        {
+          "if": { "properties": { "label": { "const": "vulnerable" } } },
+          "then": { "required": ["acceptedKinds"] }
+        }
+      ]
     },
     "realWorldMeta": {
       "type": "object",

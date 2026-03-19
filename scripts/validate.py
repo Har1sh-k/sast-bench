@@ -107,6 +107,17 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
                 if kind not in VALID_KINDS:
                     errors.append(ValidationError(case_id, f"Region {rid}: invalid accepted kind: {kind}"))
 
+        # Enforce required fields per label (plan section 9 / section 10)
+        label = region.get("label")
+        if label == "capability_safe":
+            if "requiredGuards" not in region or not region["requiredGuards"]:
+                errors.append(ValidationError(case_id, f"Region {rid}: capability_safe region must have requiredGuards"))
+            if "capability" not in region:
+                errors.append(ValidationError(case_id, f"Region {rid}: capability_safe region must have capability"))
+        if label == "vulnerable":
+            if "acceptedKinds" not in region or not region["acceptedKinds"]:
+                errors.append(ValidationError(case_id, f"Region {rid}: vulnerable region must have acceptedKinds"))
+
         # Check file exists and line range is valid
         region_path = case_dir / region.get("path", "")
         if not region_path.exists():

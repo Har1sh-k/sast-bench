@@ -19,8 +19,8 @@ python scripts/report.py results/
 
 ## Tracks
 
-- **Core Track** — Self-contained, vendored cases. 5-minute quickstart, deterministic runs.
-- **Full Track** — Core Track plus pinned snapshots from real public repositories.
+- **Core Track** --Self-contained, vendored cases. 5-minute quickstart, deterministic runs.
+- **Full Track** --Core Track plus pinned snapshots from real public repositories.
 
 ## V1 Canonical Vulnerability Kinds
 
@@ -32,11 +32,11 @@ python scripts/report.py results/
 
 ## Scoring
 
-**Agentic Score** = geometric_mean(Recall, 1 − Capability FP Rate, Mixed-Intent Accuracy)
+**Agentic Score** = geometric_mean(Recall, 1 - Capability FP Rate, Mixed-Intent Accuracy)
 
-- **Recall** — rewards real vulnerability detection
-- **1 − Capability FP Rate** — rewards low noise on intentional capability code
-- **Mixed-Intent Accuracy** — rewards correct boundary understanding inside one repo
+- **Recall** --rewards real vulnerability detection
+- **1 - Capability FP Rate** --rewards low noise on intentional capability code
+- **Mixed-Intent Accuracy** --rewards correct boundary understanding inside one repo
 
 ## Repository Layout
 
