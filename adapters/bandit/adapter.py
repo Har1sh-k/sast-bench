@@ -19,8 +19,6 @@ TEST_KIND_MAP = {
     "B607": "command_injection",  # start_process_with_partial_path
     # os.system / exec
     "B102": "command_injection",  # exec_used
-    "B103": "command_injection",  # set_bad_file_permissions
-    "B301": "command_injection",  # pickle
     # Network / SSRF
     "B310": "ssrf",  # urllib_urlopen
     "B309": "ssrf",  # httpsconnection
@@ -119,7 +117,7 @@ def scan(scan_root: Path, language: str) -> list[dict]:
             "mappedKind": mapped_kind,
             "path": rel_path,
             "startLine": issue.get("line_number", 1),
-            "endLine": issue.get("end_col_offset", issue.get("line_number", 1)),
+            "endLine": issue.get("line_range", [issue.get("line_number", 1)])[-1],
             "severity": severity_map(issue.get("issue_severity", "")),
             "message": issue.get("issue_text", ""),
         })

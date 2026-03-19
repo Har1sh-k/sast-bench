@@ -18,7 +18,6 @@ RULE_KIND_MAP = {
     "python.lang.security.audit.dangerous-system-call": "command_injection",
     "python.lang.security.ssrf.python-ssrf": "ssrf",
     "python.lang.security.audit.dynamic-urllib-use-detected": "ssrf",
-    "python.requests.best-practice.use-raise-for-status": "ssrf",
     "python.lang.security.audit.path-traversal": "path_traversal",
     "python.lang.security.audit.dangerous-file-write": "path_traversal",
     # TypeScript / JavaScript
