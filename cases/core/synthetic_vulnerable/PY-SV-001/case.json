@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "SB-PY-SV-001",
+  "track": "core",
+  "caseType": "synthetic_vulnerable",
+  "language": "python",
+  "canonicalKind": "ssrf",
+  "title": "Medical Research Agent — Unrestricted Reference Fetching",
+  "description": "A medical research agent fetches academic references and imaging URLs suggested by an LLM. The fetch tool passes model-suggested URLs directly to an HTTP client without enforcing a host allowlist, allowing SSRF to internal services.",
+  "files": {
+    "root": "project/"
+  },
+  "regions": [
+    {
+      "id": "R1",
+      "path": "project/tools/reference_fetcher.py",
+      "startLine": 15,
+      "endLine": 34,
+      "label": "vulnerable",
+      "capability": "network",
+      "acceptedKinds": ["ssrf"]
+    }
+  ],
+  "expectedOutcome": {
+    "mustDetectRegionIds": ["R1"],
+    "mustNotFlagRegionIds": []
+  }
+}
