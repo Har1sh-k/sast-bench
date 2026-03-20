@@ -15,7 +15,7 @@
       "id": "R1",
       "path": "src/tools/file_mover.rs",
       "startLine": 25,
-      "endLine": 122,
+      "endLine": 130,
       "label": "capability_safe",
       "capability": "filesystem",
       "requiredGuards": ["workspace_root"]

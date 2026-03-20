@@ -57,6 +57,10 @@ pub fn move_file(
             .map_err(|e| format!("failed to create destination directory: {e}"))?;
     }
 
+    // Re-validate source immediately before use to close the TOCTOU window.
+    let canon_source = workspace_guard::revalidate_at_use(workspace_root, &canon_source)
+        .map_err(|e| format!("source re-validation failed: {e}"))?;
+
     fs::rename(&canon_source, &canon_dest).map_err(|e| {
         format!(
             "rename failed: {e} (from {} to {})",
@@ -105,6 +109,10 @@ pub fn copy_file(
         fs::create_dir_all(parent)
             .map_err(|e| format!("failed to create destination directory: {e}"))?;
     }
+
+    // Re-validate source immediately before use to close the TOCTOU window.
+    let canon_source = workspace_guard::revalidate_at_use(workspace_root, &canon_source)
+        .map_err(|e| format!("source re-validation failed: {e}"))?;
 
     fs::copy(&canon_source, &canon_dest).map_err(|e| {
         format!(
