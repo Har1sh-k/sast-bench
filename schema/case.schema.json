@@ -98,6 +98,10 @@
     "realWorld": {
       "$ref": "#/$defs/realWorldMeta",
       "description": "Metadata for real_world_disclosed cases"
+    },
+    "standards": {
+      "$ref": "#/$defs/standardsMappings",
+      "description": "Mappings to external security standards"
     }
   },
   "additionalProperties": false,
@@ -203,6 +207,35 @@
           "type": "string",
           "pattern": "^CVE-",
           "description": "CVE identifier if available"
+        }
+      },
+      "additionalProperties": false
+    },
+    "standardsMappings": {
+      "type": "object",
+      "properties": {
+        "owaspAgenticTop10": {
+          "$ref": "#/$defs/owaspAgenticTop10"
+        }
+      },
+      "additionalProperties": false
+    },
+    "owaspAgenticTop10": {
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": {
+          "type": "string",
+          "pattern": "^ASI(0[1-9]|10)$",
+          "description": "Primary OWASP Agentic Top 10 category"
+        },
+        "secondary": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^ASI(0[1-9]|10)$"
+          },
+          "description": "Secondary OWASP Agentic Top 10 categories"
         }
       },
       "additionalProperties": false

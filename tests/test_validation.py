@@ -84,10 +84,50 @@ def test_language_distribution():
     assert "rust" in languages
 
 
+def test_owasp_standards_when_present():
+    """Cases with standards field must have valid ASI IDs."""
+    import json
+
+    VALID_ASI_IDS = {f"ASI{i:02d}" for i in range(1, 11)}
+    cases = find_cases(CASES_DIR)
+
+    for case_dir in cases:
+        with open(case_dir / "case.json") as f:
+            case = json.load(f)
+        standards = case.get("standards", {})
+        owasp = standards.get("owaspAgenticTop10")
+        if owasp:
+            assert owasp["primary"] in VALID_ASI_IDS, \
+                f"{case['id']}: invalid primary ASI ID {owasp['primary']}"
+            for s in owasp.get("secondary", []):
+                assert s in VALID_ASI_IDS, \
+                    f"{case['id']}: invalid secondary ASI ID {s}"
+            assert owasp["primary"] not in owasp.get("secondary", []), \
+                f"{case['id']}: primary ASI ID should not repeat in secondary"
+
+
+def test_all_cases_have_owasp_mapping():
+    """Every case should have OWASP Agentic Top 10 mapping."""
+    import json
+
+    cases = find_cases(CASES_DIR)
+    unmapped = []
+    for case_dir in cases:
+        with open(case_dir / "case.json") as f:
+            case = json.load(f)
+        standards = case.get("standards", {})
+        if not standards.get("owaspAgenticTop10"):
+            unmapped.append(case["id"])
+
+    assert not unmapped, f"Cases without OWASP mapping: {unmapped}"
+
+
 if __name__ == "__main__":
     test_all_cases_are_valid()
     test_minimum_case_count()
     test_case_type_distribution()
     test_full_track_release_bar()
     test_language_distribution()
+    test_owasp_standards_when_present()
+    test_all_cases_have_owasp_mapping()
     print("All tests passed.")

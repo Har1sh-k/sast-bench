@@ -25,6 +25,7 @@ VALID_KINDS = {"command_injection", "path_traversal", "ssrf", "auth_bypass", "au
 VALID_LABELS = {"vulnerable", "capability_safe"}
 VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization"}
 VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist", "caller_verification", "secret_validation", "scope_binding", "role_check"}
+VALID_ASI_IDS = {f"ASI{i:02d}" for i in range(1, 11)}
 
 
 class ValidationError:
@@ -167,6 +168,27 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
 
     if case_type == "real_world_disclosed" and "realWorld" not in case:
         errors.append(ValidationError(case_id, "real_world_disclosed case must have realWorld metadata"))
+
+    # Validate standards field (optional)
+    if "standards" in case:
+        standards = case["standards"]
+        if not isinstance(standards, dict):
+            errors.append(ValidationError(case_id, "standards must be an object"))
+        elif "owaspAgenticTop10" in standards:
+            owasp = standards["owaspAgenticTop10"]
+            if not isinstance(owasp, dict):
+                errors.append(ValidationError(case_id, "standards.owaspAgenticTop10 must be an object"))
+            else:
+                primary = owasp.get("primary")
+                if not primary:
+                    errors.append(ValidationError(case_id, "standards.owaspAgenticTop10 must have a primary ASI ID"))
+                elif primary not in VALID_ASI_IDS:
+                    errors.append(ValidationError(case_id, f"Invalid primary ASI ID: {primary}"))
+                for asi_id in owasp.get("secondary", []):
+                    if asi_id not in VALID_ASI_IDS:
+                        errors.append(ValidationError(case_id, f"Invalid secondary ASI ID: {asi_id}"))
+                if primary and primary in owasp.get("secondary", []):
+                    errors.append(ValidationError(case_id, f"Primary ASI ID {primary} should not repeat in secondary"))
 
     # Context file should exist
     if not (case_dir / "context.md").exists():
