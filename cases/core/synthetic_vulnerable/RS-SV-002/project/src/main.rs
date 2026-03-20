@@ -19,9 +19,9 @@ fn main() {
     }
 
     let project_path = &args[1];
-    let config = AgentConfig::default();
+    let config = AgentConfig::from_project_path(project_path);
 
-    println!("[agent] Planning build tasks for: {}", project_path);
+    println!("[agent] Planning build tasks for: {}", config.project_root);
     let plan = create_build_plan(project_path);
 
     println!("[agent] Executing {} task(s)...", plan.len());

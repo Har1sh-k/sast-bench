@@ -31,7 +31,7 @@ export function createTravelPlan(destination: string): PlanStep[] {
     },
     {
       action: "fetch_url",
-      url: "https://wikitravel.org/en/" + destination.replace(/\s+/g, "_"),
+      url: `https://wikitravel.org/en/${encodeURIComponent(destination.replace(/\s+/g, "_"))}`,
       description: "Fetch destination travel guide",
     },
     {

@@ -1,7 +1,24 @@
 """Agent router — dispatches plan steps to the appropriate tool."""
 
+from __future__ import annotations
+
+import logging
+
 from agent.planner import PlanStep
 from tools.command_runner import run_command
+
+logger = logging.getLogger(__name__)
+
+
+def _error_result(command: str, reason: str) -> dict:
+    return {
+        "command": command,
+        "allowed": False,
+        "return_code": None,
+        "stdout": "",
+        "stderr": "",
+        "errors": [reason],
+    }
 
 
 def execute_plan(plan: list[PlanStep]) -> list[dict]:
@@ -9,8 +26,21 @@ def execute_plan(plan: list[PlanStep]) -> list[dict]:
     results: list[dict] = []
 
     for step in plan:
-        if step["action"] == "run_command":
-            result = run_command(step["command"])
+        if not isinstance(step, dict):
+            logger.warning("Skipping non-dict plan step: %r", step)
+            continue
+
+        action = step.get("action")
+        if not isinstance(action, str):
+            results.append(_error_result("", "Plan step missing valid 'action' key"))
+            continue
+
+        if action == "run_command":
+            command = step.get("command")
+            if not isinstance(command, str) or not command:
+                results.append(_error_result("", "run_command step missing valid 'command'"))
+                continue
+            result = run_command(command)
             results.append(
                 {
                     "command": result.command,
@@ -22,15 +52,9 @@ def execute_plan(plan: list[PlanStep]) -> list[dict]:
                 }
             )
         else:
-            results.append(
-                {
-                    "command": step.get("command", ""),
-                    "allowed": False,
-                    "return_code": None,
-                    "stdout": "",
-                    "stderr": "",
-                    "errors": [f"Unknown action: {step['action']}"],
-                }
-            )
+            results.append(_error_result(
+                step.get("command", ""),
+                f"Unknown action: {action}",
+            ))
 
     return results

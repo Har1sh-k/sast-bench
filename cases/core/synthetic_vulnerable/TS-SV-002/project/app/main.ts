@@ -27,4 +27,7 @@ if (!destination) {
   process.exit(1);
 }
 
-main(destination);
+main(destination).catch((err) => {
+  console.error("Agent crashed:", err);
+  process.exit(1);
+});

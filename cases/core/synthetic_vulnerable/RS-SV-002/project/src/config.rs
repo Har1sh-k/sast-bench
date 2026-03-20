@@ -1,5 +1,8 @@
 //! Agent configuration.
 
+/// Default timeout in seconds for a single command.
+pub const DEFAULT_COMMAND_TIMEOUT_SECS: u64 = 120;
+
 /// Runtime configuration for the build helper agent.
 pub struct AgentConfig {
     /// Root directory of the project to operate on.
@@ -8,11 +11,12 @@ pub struct AgentConfig {
     pub command_timeout_secs: u64,
 }
 
-impl Default for AgentConfig {
-    fn default() -> Self {
+impl AgentConfig {
+    /// Create a configuration targeting the given project directory.
+    pub fn from_project_path(path: &str) -> Self {
         Self {
-            project_root: ".".into(),
-            command_timeout_secs: 120,
+            project_root: path.to_string(),
+            command_timeout_secs: DEFAULT_COMMAND_TIMEOUT_SECS,
         }
     }
 }

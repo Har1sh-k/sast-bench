@@ -28,4 +28,7 @@ if (!ticketId) {
   process.exit(1);
 }
 
-main(ticketId);
+main(ticketId).catch((err) => {
+  console.error("Agent crashed:", err);
+  process.exit(1);
+});

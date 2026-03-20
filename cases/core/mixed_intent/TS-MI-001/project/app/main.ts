@@ -30,4 +30,7 @@ if (!query) {
   process.exit(1);
 }
 
-main(query);
+main(query).catch((err) => {
+  console.error("Agent crashed:", err);
+  process.exit(1);
+});

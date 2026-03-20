@@ -6,6 +6,8 @@ without enforcing a host allowlist or scheme restriction.
 
 import requests
 
+MAX_RESPONSE_BYTES = 10 * 1024 * 1024  # 10 MB
+
 
 def extract_title(html: str) -> str:
     """Extract a rough title from HTML content."""
@@ -16,7 +18,7 @@ def extract_title(html: str) -> str:
     return "Untitled"
 
 
-def fetch_reference(url: str) -> dict:                          # line 15
+def fetch_reference(url: str) -> dict:                          # line 18
     """Fetch a reference URL and return metadata.
 
     This function receives URLs directly from the agent planner,
@@ -28,14 +30,29 @@ def fetch_reference(url: str) -> dict:                          # line 15
     api.semanticscholar.org) would prevent SSRF here but is missing.
     """
     try:
-        response = requests.get(url, timeout=10)                # line 27
+        response = requests.get(url, timeout=10)                # line 30
         response.raise_for_status()
+
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > MAX_RESPONSE_BYTES:
+            return {
+                "url": url,
+                "status": "error",
+                "title": f"Response too large ({content_length} bytes)",
+            }
+        if len(response.content) > MAX_RESPONSE_BYTES:
+            return {
+                "url": url,
+                "status": "error",
+                "title": f"Response body exceeds {MAX_RESPONSE_BYTES} byte limit",
+            }
+
         title = extract_title(response.text)
         return {
             "url": url,
             "status": "ok",
             "title": title,
-        }                                                       # line 34
+        }                                                       # line 47
     except requests.RequestException as exc:
         return {
             "url": url,

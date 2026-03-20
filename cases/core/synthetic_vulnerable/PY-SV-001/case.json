@@ -14,8 +14,8 @@
     {
       "id": "R1",
       "path": "tools/reference_fetcher.py",
-      "startLine": 15,
-      "endLine": 34,
+      "startLine": 21,
+      "endLine": 55,
       "label": "vulnerable",
       "capability": "network",
       "acceptedKinds": ["ssrf"]

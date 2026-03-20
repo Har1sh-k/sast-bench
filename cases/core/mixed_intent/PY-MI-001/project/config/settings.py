@@ -1,12 +1,13 @@
 """Triage assistant configuration."""
 
 # Hosts pre-approved by the security team for clinical data retrieval.
-APPROVED_CLINICAL_HOSTS: list[str] = [
+# Using frozenset for immutability and O(1) lookup.
+APPROVED_CLINICAL_HOSTS: frozenset[str] = frozenset([
     "pubmed.ncbi.nlm.nih.gov",
     "clinicaltrials.gov",
     "api.fda.gov",
     "loinc.org",
-]
+])
 
 # General settings
 REQUEST_TIMEOUT = 15
