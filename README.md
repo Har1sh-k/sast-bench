@@ -4,6 +4,25 @@
 
 SASTbench evaluates whether static analyzers can detect real vulnerabilities in agentic codebases without treating intentional agent capabilities as vulnerabilities.
 
+## What SASTbench Is and Is Not
+
+**What gets scored:**
+SASTbench measures whether a static analyzer can detect annotated vulnerable code regions (true positives) without flooding the user with false positives on nearby code.
+Scoring uses five canonical vulnerability kinds (`command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`) and region-level overlap matching.
+
+**Why capability-safe regions matter:**
+Agentic code often calls dangerous APIs on purpose — `subprocess.run()`, `fs.writeFile()`, `requests.get()`.
+A good scanner should flag those calls only when the guard is missing, not every time they appear.
+Capability-safe cases contain properly guarded dangerous code.
+The Capability FP Rate metric measures how often a scanner flags guarded code that it should leave alone.
+
+**What SASTbench does not measure:**
+- Prompt injection as a runtime attack (it measures whether tainted prompt data reaches code sinks)
+- Secret scanning quality
+- Severity calibration across vendors
+- End-to-end agent runtime exploits
+- General non-security code quality
+
 ## Quick Start
 
 ```bash
@@ -62,6 +81,20 @@ Run benchmark self-tests from the repo root with:
 python -m pytest -q
 ```
 
+### Smoke Tests for Official Adapters
+
+Verify your scanner installation works before running the full benchmark:
+
+```bash
+# Semgrep on one Python case
+python scripts/run.py --scanner semgrep --track core --case-id SB-PY-SV-001
+
+# Bandit on one Python case
+python scripts/run.py --scanner bandit --track core --case-id SB-PY-SV-001
+```
+
+Both should show `HIT` for SB-PY-SV-001 (SSRF in reference fetcher).
+
 ## Tracks
 
 - **Core Track**: Self-contained, vendored cases. 5-minute quickstart, deterministic runs.
@@ -77,6 +110,17 @@ python -m pytest -q
 
 - `semgrep`
 - `bandit`
+
+## Baseline Reference Results
+
+These are approximate expected results for the official adapters on the Core Track, useful for sanity-checking your setup:
+
+| Adapter | Recall | Precision | Cap FP Rate | Agentic Score | Notes |
+|---------|--------|-----------|-------------|---------------|-------|
+| `semgrep` | ~55% | ~45% | 33-66% | ~40% | Best coverage across all 3 languages |
+| `bandit` | ~22% | ~40% | 0% | 0% | Python-only; returns `[]` for TS/Rust cases |
+
+These numbers vary slightly across semgrep/bandit versions and rule sets. They are reference points, not exact thresholds.
 
 ## V1 Canonical Vulnerability Kinds
 
@@ -105,6 +149,21 @@ SASTbench currently has strong coverage for ASI02 (Tool Misuse & Exploitation), 
 ASI08 (Cascading Failures), ASI09 (Human-Agent Trust Exploitation), and ASI10 (Rogue Agents) remain out of scope for the benchmark's current scoring model because they depend on system-level runtime behavior, human-in-the-loop evaluation, or long-horizon agent behavior rather than stable region-level SAST findings.
 
 See [docs/OWASP_AGENTIC_TOP10_MAPPING.md](docs/OWASP_AGENTIC_TOP10_MAPPING.md) for the full mapping table and per-category case lists.
+
+## Generated Directories
+
+These directories are created at runtime and excluded from git via `.gitignore`:
+
+| Directory | Created by | Contents |
+|-----------|-----------|----------|
+| `results/` | `scripts/run.py` | Results JSON, HTML reports, raw scanner artifacts |
+| `.repos/` | `scripts/setup_repos.py` | Cloned real-world repo snapshots for Full Track |
+| `.securevibes/` | securevibes-agent scanner | Scanner knowledge-base state (cleaned up by adapter) |
+| `.claude/` | Some LLM-backed scanners | Scanner config/skills state (cleaned up by adapter) |
+| `__pycache__/` | Python | Bytecode cache |
+| `node_modules/` | npm | Node.js dependencies (in case project dirs) |
+
+Do not commit these directories. If you see them in `git status`, check `.gitignore`.
 
 ## Repository Layout
 
