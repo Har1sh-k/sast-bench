@@ -108,7 +108,7 @@ def run_benchmark(
         return 1
 
     B = "\033[1;36m[SASTbench]\033[0m"
-    SEP = "\033[2m" + "─" * 45 + "\033[0m"
+    SEP = "\033[2m" + "-" * 45 + "\033[0m"
     print(f"{B} Running SASTbench ({track} track) with {scanner_name}")
     print(f"{B} Found {len(cases)} cases\n")
 
@@ -220,7 +220,7 @@ def run_benchmark(
             status_parts.append(f"skip={scan_meta['skipReason']}")
         result_str = " | ".join(status_parts) if status_parts else "no findings"
         print(f"{SEP}")
-        print(f"{B} {current_case_id} → {result_str}\n")
+        print(f"{B} {current_case_id} => {result_str}\n")
 
     summary = compute_summary(all_scorings, all_cases)
 
