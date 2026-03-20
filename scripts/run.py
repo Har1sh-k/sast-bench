@@ -5,7 +5,9 @@ normalized results in the official JSON format.
 
 Usage:
     python scripts/run.py --scanner semgrep --track core
-    python scripts/run.py --scanner bandit --track core --output results.json
+    python scripts/run.py --scanner semgrep --track core --verbose
+    python scripts/run.py --scanner bandit --track core -o results.json
+    python scripts/run.py --scanner semgrep --track full --case-id SB-PY-RW-001
 """
 
 import argparse

@@ -1,10 +1,11 @@
 """SASTbench HTML report generator.
 
-Generates a simple shareable HTML report from benchmark results JSON.
+Generates a shareable HTML report from benchmark results JSON.
 
 Usage:
     python scripts/report.py results.json
-    python scripts/report.py results.json --output report.html
+    python scripts/report.py results.json --verbose
+    python scripts/report.py results.json -o report.html --verbose
 """
 
 import argparse
