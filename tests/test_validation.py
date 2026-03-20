@@ -28,7 +28,7 @@ def test_all_cases_are_valid():
 def test_minimum_case_count():
     """V1 requires at least 15 official cases (12 core + 3 full)."""
     cases = find_cases(CASES_DIR)
-    assert len(cases) >= 12, f"Only {len(cases)} cases found, need at least 12 for Core Track"
+    assert len(cases) >= 15, f"Only {len(cases)} cases found, need at least 15 for V1"
 
 
 def test_case_type_distribution():
@@ -51,11 +51,7 @@ def test_case_type_distribution():
 
 
 def test_full_track_release_bar():
-    """V1 release requires at least 3 real_world_disclosed cases (plan section 8).
-
-    This test documents the release bar. It currently warns instead of
-    failing because Full Track cases are being annotated.
-    """
+    """V1 release requires at least 3 real_world_disclosed cases (plan section 8)."""
     import json
 
     full_dir = CASES_DIR / "full"
@@ -66,8 +62,9 @@ def test_full_track_release_bar():
         if case.get("caseType") == "real_world_disclosed":
             rw_count += 1
 
-    if rw_count < 3:
-        print(f"  WARNING: Full Track has {rw_count}/3 real_world_disclosed cases -- below v1.0.0 release bar")
+    assert rw_count >= 3, (
+        f"Full Track has {rw_count}/3 real_world_disclosed cases -- below v1.0.0 release bar"
+    )
 
 
 def test_language_distribution():
