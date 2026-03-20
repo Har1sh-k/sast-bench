@@ -86,12 +86,62 @@ def write_artifact(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _case_outcome(scoring, skip_reason: str | None) -> str:
+    """Return a concise outcome label for a case."""
+    if skip_reason:
+        return "SKIP"
+    if scoring.false_negatives > 0 and scoring.true_positives == 0:
+        return "MISS"
+    if scoring.true_positives > 0:
+        noise = scoring.false_positives + scoring.capability_false_positives
+        return "HIT" if noise == 0 else "HIT (noisy)"
+    return "CLEAN" if scoring.false_positives == 0 else "NOISY"
+
+
+def _format_default_status(scoring, skip_reason: str | None) -> str:
+    """Format a concise one-line status for default mode."""
+    outcome = _case_outcome(scoring, skip_reason)
+    parts = [outcome]
+    if scoring.false_negatives:
+        parts.append(f"FN={scoring.false_negatives}")
+    if scoring.false_positives:
+        parts.append(f"FP={scoring.false_positives}")
+    if scoring.capability_false_positives:
+        parts.append(f"CapFP={scoring.capability_false_positives}")
+    if skip_reason:
+        parts.append(f"skip={skip_reason}")
+    return " | ".join(parts)
+
+
+def _print_verbose_findings(finding_dicts: list[dict], prefix: str) -> None:
+    """Print per-finding detail in verbose mode."""
+    if not finding_dicts:
+        print(f"{prefix}   (no findings)")
+        return
+    CLASS_COLOR = {
+        "true_positive": "\033[32m",     # green
+        "false_positive": "\033[33m",    # yellow
+        "capability_false_positive": "\033[31m",  # red
+    }
+    RESET = "\033[0m"
+    for fd in finding_dicts:
+        cls = fd["classification"]
+        color = CLASS_COLOR.get(cls, "")
+        tag = cls.upper().replace("_", " ")
+        region = fd.get("matchedRegionId") or "-"
+        print(f"{prefix}   {color}[{tag}]{RESET} {fd['path']}:{fd['startLine']}-{fd['endLine']}")
+        print(f"{prefix}     kind={fd['mappedKind']}  rule={fd['ruleId']}  region={region}")
+        if fd.get("message"):
+            print(f"{prefix}     {fd['message']}")
+
+
 def run_benchmark(
     scanner_name: str,
     track: str,
     output_path: Path | None,
     case_type: str | None = None,
     case_id: str | None = None,
+    verbose: bool = False,
 ) -> int:
     """Run the benchmark and produce results."""
     started_at = datetime.now(timezone.utc)
@@ -209,18 +259,13 @@ def run_benchmark(
             "artifacts": artifact_info,
         })
 
-        status_parts = []
-        if scoring.true_positives:
-            status_parts.append(f"TP={scoring.true_positives}")
-        if scoring.false_negatives:
-            status_parts.append(f"FN={scoring.false_negatives}")
-        if scoring.capability_false_positives:
-            status_parts.append(f"CapFP={scoring.capability_false_positives}")
-        if scan_meta.get("skipReason"):
-            status_parts.append(f"skip={scan_meta['skipReason']}")
-        result_str = " | ".join(status_parts) if status_parts else "no findings"
+        skip_reason = scan_meta.get("skipReason")
+        result_str = _format_default_status(scoring, skip_reason)
         print(f"{SEP}")
-        print(f"{B} {current_case_id} => {result_str}\n")
+        print(f"{B} {current_case_id} => {result_str}")
+        if verbose:
+            _print_verbose_findings(finding_dicts, B)
+        print()
 
     summary = compute_summary(all_scorings, all_cases)
 
@@ -276,9 +321,14 @@ def main() -> int:
         "--case-id",
         help="Run a single case by ID (e.g. SB-TS-RW-001)",
     )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show per-finding detail with classifications",
+    )
     args = parser.parse_args()
 
-    return run_benchmark(args.scanner, args.track, args.output, args.case_type, args.case_id)
+    return run_benchmark(args.scanner, args.track, args.output, args.case_type, args.case_id, args.verbose)
 
 
 if __name__ == "__main__":
