@@ -31,5 +31,10 @@
     "fixCommit": "c6703dd89128b59f1fab79dc38eaa8e24009adce",
     "ghsa": "GHSA-wvjg-9879-3m7w",
     "cve": "CVE-2025-31490"
+  },
+  "standards": {
+    "owaspAgenticTop10": {
+      "primary": "ASI02"
+    }
   }
 }

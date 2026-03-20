@@ -31,5 +31,10 @@
     "fixCommit": "2b4b1dc29a833d4053deba4c2b77a3848c834565",
     "ghsa": "GHSA-2g6r-c272-w58r",
     "cve": "CVE-2026-26013"
+  },
+  "standards": {
+    "owaspAgenticTop10": {
+      "primary": "ASI02"
+    }
   }
 }

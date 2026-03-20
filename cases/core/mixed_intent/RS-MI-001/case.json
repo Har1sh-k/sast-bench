@@ -33,5 +33,11 @@
   "expectedOutcome": {
     "mustDetectRegionIds": ["R2"],
     "mustNotFlagRegionIds": ["R1"]
+  },
+  "standards": {
+    "owaspAgenticTop10": {
+      "primary": "ASI03",
+      "secondary": ["ASI02"]
+    }
   }
 }

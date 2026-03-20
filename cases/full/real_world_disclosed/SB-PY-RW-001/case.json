@@ -31,5 +31,11 @@
     "fixCommit": "ebdeb613f7bdcbdc9d32eb1b850b9b8c8f71dfae",
     "ghsa": "GHSA-x39x-9qw5-ghrf",
     "cve": "CVE-2025-47241"
+  },
+  "standards": {
+    "owaspAgenticTop10": {
+      "primary": "ASI02",
+      "secondary": ["ASI03"]
+    }
   }
 }

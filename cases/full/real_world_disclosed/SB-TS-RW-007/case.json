@@ -31,5 +31,11 @@
     "fixCommit": "78a7ff2d50fb3bcef351571cb5a0f21430a340c1",
     "ghsa": "GHSA-q399-23r3-hfx4",
     "cve": ""
+  },
+  "standards": {
+    "owaspAgenticTop10": {
+      "primary": "ASI02",
+      "secondary": ["ASI03"]
+    }
   }
 }
