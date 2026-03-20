@@ -25,7 +25,9 @@ python scripts/report.py results/
 ## Status
 
 - Core Track is implemented and validated.
-- Full Track scaffolding exists, but `v1.0.0` still requires at least 3 `real_world_disclosed` cases.
+- Full Track now includes 6 `real_world_disclosed` cases and exceeds the
+  minimum `v1.0.0` release bar.
+- `v1.0.0` still targets 5 to 10+ real-world cases if they annotate cleanly.
 
 ## Official Adapters
 
