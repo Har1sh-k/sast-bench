@@ -5,6 +5,7 @@ that referenced files and line ranges exist.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -26,6 +27,13 @@ VALID_LABELS = {"vulnerable", "capability_safe"}
 VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization"}
 VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist", "caller_verification", "secret_validation", "scope_binding", "role_check"}
 VALID_ASI_IDS = {f"ASI{i:02d}" for i in range(1, 11)}
+DISALLOWED_SCAN_ROOT_DIRS = {
+    ".claude",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+}
 
 
 class ValidationError:
@@ -35,6 +43,17 @@ class ValidationError:
 
     def __str__(self) -> str:
         return f"[{self.case_id}] {self.message}"
+
+
+def find_disallowed_scan_root_dirs(root_path: Path) -> list[Path]:
+    """Return disallowed directories found under a case scan root."""
+    disallowed: list[Path] = []
+    for current_root, dirnames, _filenames in os.walk(root_path, topdown=True):
+        banned = [name for name in dirnames if name in DISALLOWED_SCAN_ROOT_DIRS]
+        for name in banned:
+            disallowed.append((Path(current_root) / name).relative_to(root_path))
+        dirnames[:] = [name for name in dirnames if name not in DISALLOWED_SCAN_ROOT_DIRS]
+    return sorted(disallowed)
 
 
 def validate_case(case_dir: Path) -> list[ValidationError]:
@@ -82,6 +101,14 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
     root_path = case_dir / root
     if not root_path.exists():
         errors.append(ValidationError(case_id, f"Files root does not exist: {root}"))
+    else:
+        for disallowed in find_disallowed_scan_root_dirs(root_path):
+            errors.append(
+                ValidationError(
+                    case_id,
+                    f"Disallowed directory in scan root: {disallowed.as_posix()}",
+                )
+            )
 
     # Validate regions
     region_ids = set()

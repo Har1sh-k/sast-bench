@@ -1,11 +1,12 @@
 """Tests for the SASTbench case validator."""
 
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from validate import find_cases, validate_case, CASES_DIR
+from validate import CASES_DIR, find_cases, validate_case
 
 
 def test_all_cases_are_valid():
@@ -108,7 +109,6 @@ def test_owasp_standards_when_present():
 
 def test_all_cases_have_owasp_mapping():
     """Every case should have OWASP Agentic Top 10 mapping."""
-    import json
 
     cases = find_cases(CASES_DIR)
     unmapped = []
@@ -120,6 +120,50 @@ def test_all_cases_have_owasp_mapping():
             unmapped.append(case["id"])
 
     assert not unmapped, f"Cases without OWASP mapping: {unmapped}"
+
+
+def test_disallowed_scan_root_directories_are_rejected(tmp_path):
+    """Case scan roots should not contain vendored or tool-generated junk."""
+    case_dir = tmp_path / "SB-TMP-SV-001"
+    project_dir = case_dir / "project"
+    project_dir.mkdir(parents=True)
+    (case_dir / "context.md").write_text("Temporary test case.\n", encoding="utf-8")
+    (project_dir / "tool.py").write_text("print('ok')\n", encoding="utf-8")
+    (project_dir / "node_modules").mkdir()
+    (project_dir / "node_modules" / "junk.js").write_text("eval('bad')\n", encoding="utf-8")
+
+    case = {
+        "schemaVersion": "1.0.0",
+        "id": "SB-TMP-SV-001",
+        "track": "core",
+        "caseType": "synthetic_vulnerable",
+        "language": "python",
+        "canonicalKind": "command_injection",
+        "files": {"root": "project/"},
+        "regions": [
+            {
+                "id": "R1",
+                "path": "tool.py",
+                "startLine": 1,
+                "endLine": 1,
+                "label": "vulnerable",
+                "capability": "code_execution",
+                "acceptedKinds": ["command_injection"],
+            }
+        ],
+        "expectedOutcome": {
+            "mustDetectRegionIds": ["R1"],
+            "mustNotFlagRegionIds": [],
+        },
+        "standards": {
+            "owaspAgenticTop10": {"primary": "ASI05"},
+        },
+    }
+    (case_dir / "case.json").write_text(json.dumps(case), encoding="utf-8")
+
+    errors = validate_case(case_dir)
+
+    assert any("Disallowed directory in scan root: node_modules" in str(err) for err in errors)
 
 
 if __name__ == "__main__":
