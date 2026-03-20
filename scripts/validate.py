@@ -4,6 +4,7 @@ Validates all case.json files against the case schema and checks
 that referenced files and line ranges exist.
 """
 
+import argparse
 import json
 import os
 import sys
@@ -56,6 +57,14 @@ def find_disallowed_scan_root_dirs(root_path: Path) -> list[Path]:
     return sorted(disallowed)
 
 
+def has_checked_out_files(root_path: Path) -> bool:
+    """Return whether a git snapshot contains files beyond the .git dir."""
+    try:
+        return any(child.name != ".git" for child in root_path.iterdir())
+    except OSError:
+        return False
+
+
 def validate_case(case_dir: Path) -> list[ValidationError]:
     """Validate a single case directory."""
     errors: list[ValidationError] = []
@@ -99,9 +108,18 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
     # Files root must exist
     root = case["files"].get("root", "")
     root_path = case_dir / root
+    scan_root_ready = False
     if not root_path.exists():
         errors.append(ValidationError(case_id, f"Files root does not exist: {root}"))
+    elif (root_path / ".git").exists() and not has_checked_out_files(root_path):
+        errors.append(
+            ValidationError(
+                case_id,
+                f"Files root checkout is incomplete: {root} (rerun python scripts/setup_repos.py)",
+            )
+        )
     else:
+        scan_root_ready = True
         for disallowed in find_disallowed_scan_root_dirs(root_path):
             errors.append(
                 ValidationError(
@@ -148,19 +166,20 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
 
         # Check file exists and line range is valid
         # Region paths are relative to scan_root (files.root), not case_dir
-        region_path = root_path / region.get("path", "")
-        if not region_path.exists():
-            errors.append(ValidationError(case_id, f"Region {rid}: file does not exist: {region.get('path')}"))
-        else:
-            line_count = len(region_path.read_text(encoding="utf-8").splitlines())
-            start = region.get("startLine", 0)
-            end = region.get("endLine", 0)
-            if start < 1 or end < 1:
-                errors.append(ValidationError(case_id, f"Region {rid}: line numbers must be >= 1"))
-            elif start > end:
-                errors.append(ValidationError(case_id, f"Region {rid}: startLine ({start}) > endLine ({end})"))
-            elif end > line_count:
-                errors.append(ValidationError(case_id, f"Region {rid}: endLine ({end}) exceeds file length ({line_count})"))
+        if scan_root_ready:
+            region_path = root_path / region.get("path", "")
+            if not region_path.exists():
+                errors.append(ValidationError(case_id, f"Region {rid}: file does not exist: {region.get('path')}"))
+            else:
+                line_count = len(region_path.read_text(encoding="utf-8").splitlines())
+                start = region.get("startLine", 0)
+                end = region.get("endLine", 0)
+                if start < 1 or end < 1:
+                    errors.append(ValidationError(case_id, f"Region {rid}: line numbers must be >= 1"))
+                elif start > end:
+                    errors.append(ValidationError(case_id, f"Region {rid}: startLine ({start}) > endLine ({end})"))
+                elif end > line_count:
+                    errors.append(ValidationError(case_id, f"Region {rid}: endLine ({end}) exceeds file length ({line_count})"))
 
     # Validate expectedOutcome references
     outcome = case["expectedOutcome"]
@@ -232,8 +251,32 @@ def find_cases(base_dir: Path) -> list[Path]:
     return cases
 
 
+def find_cases_for_track(track: str) -> list[Path]:
+    """Find case directories for the requested benchmark track."""
+    if track == "core":
+        search_dirs = [CASES_DIR / "core"]
+    elif track == "full":
+        search_dirs = [CASES_DIR / "core", CASES_DIR / "full"]
+    else:
+        raise ValueError(f"Unknown track: {track}")
+
+    cases: list[Path] = []
+    for search_dir in search_dirs:
+        cases.extend(find_cases(search_dir))
+    return cases
+
+
 def main() -> int:
-    cases = find_cases(CASES_DIR)
+    parser = argparse.ArgumentParser(description="Validate SASTbench case definitions")
+    parser.add_argument(
+        "--track",
+        choices=["core", "full"],
+        default="core",
+        help="Validate Core Track only (default) or Full Track (core + full cases)",
+    )
+    args = parser.parse_args()
+
+    cases = find_cases_for_track(args.track)
     if not cases:
         print("No cases found.")
         return 1
@@ -243,12 +286,14 @@ def main() -> int:
         errors = validate_case(case_dir)
         all_errors.extend(errors)
 
-    print(f"Validated {len(cases)} cases.")
+    print(f"Validated {len(cases)} cases ({args.track} track).")
 
     if all_errors:
         print(f"\n{len(all_errors)} error(s) found:\n")
         for error in all_errors:
             print(f"  ERROR: {error}")
+        if args.track == "full":
+            print("\nHint: run `python scripts/setup_repos.py` to populate Full Track snapshots.")
         return 1
 
     print("All cases valid.")

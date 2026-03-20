@@ -31,37 +31,65 @@ def find_real_world_cases() -> list[tuple[Path, dict]]:
     """Find all real_world_disclosed cases."""
     cases = []
     for case_json in sorted(FULL_CASES_DIR.rglob("case.json")):
-        with open(case_json) as f:
+        with open(case_json, encoding="utf-8") as f:
             case = json.load(f)
         if case.get("caseType") == "real_world_disclosed":
             cases.append((case_json.parent, case))
     return cases
 
 
-def clone_and_pin(repo: str, commit: str, target_dir: Path) -> bool:
-    """Clone a repo and checkout a specific commit."""
-    if target_dir.exists():
-        print(f"    Already exists: {target_dir.name}")
-        return True
-
-    target_dir.parent.mkdir(parents=True, exist_ok=True)
-
-    print(f"    Cloning {repo}...", end=" ", flush=True)
-    result = subprocess.run(
-        ["git", "clone", "--no-checkout", f"https://github.com/{repo}.git", str(target_dir)],
-        capture_output=True, text=True, timeout=300,
-    )
-    if result.returncode != 0:
-        print(f"FAILED: {result.stderr.strip()}")
+def has_checked_out_files(target_dir: Path) -> bool:
+    """Return whether a git snapshot contains files beyond the .git dir."""
+    try:
+        return any(child.name != ".git" for child in target_dir.iterdir())
+    except OSError:
         return False
 
+
+def run_git(args: list[str], *, timeout: int) -> subprocess.CompletedProcess[str]:
+    """Run a git command and capture output."""
+    return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+
+
+def ensure_repo_checkout(repo: str, commit: str, target_dir: Path) -> bool:
+    """Clone or repair a snapshot, then checkout the requested commit."""
+    if target_dir.exists():
+        git_dir = target_dir / ".git"
+        if not git_dir.exists():
+            print(f"    FAILED: existing directory is not a git repo: {target_dir}")
+            return False
+
+        if has_checked_out_files(target_dir):
+            print(f"    Ready: {target_dir.name}")
+            return True
+
+        print(f"    Repairing incomplete checkout for {target_dir.name}...", end=" ", flush=True)
+        fetch_result = run_git(
+            ["git", "-C", str(target_dir), "fetch", "--depth", "1", "origin", commit],
+            timeout=300,
+        )
+        if fetch_result.returncode != 0:
+            print(f"FAILED: {fetch_result.stderr.strip()}")
+            return False
+    else:
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"    Cloning {repo}...", end=" ", flush=True)
+        clone_result = run_git(
+            ["git", "clone", "--no-checkout", f"https://github.com/{repo}.git", str(target_dir)],
+            timeout=300,
+        )
+        if clone_result.returncode != 0:
+            print(f"FAILED: {clone_result.stderr.strip()}")
+            return False
+
     print(f"checking out {commit[:8]}...", end=" ", flush=True)
-    result = subprocess.run(
-        ["git", "-C", str(target_dir), "checkout", commit],
-        capture_output=True, text=True, timeout=60,
+    checkout_result = run_git(
+        ["git", "-C", str(target_dir), "checkout", "--force", commit],
+        timeout=60,
     )
-    if result.returncode != 0:
-        print(f"FAILED: {result.stderr.strip()}")
+    if checkout_result.returncode != 0:
+        print(f"FAILED: {checkout_result.stderr.strip()}")
         return False
 
     print("OK")
@@ -92,7 +120,7 @@ def main() -> int:
         print(f"  [{case['id']}] {repo} @ {commit[:8]} -> .repos/{dir_name}")
         target = REPOS_DIR / dir_name
 
-        if clone_and_pin(repo, commit, target):
+        if ensure_repo_checkout(repo, commit, target):
             success += 1
 
     print(f"\n{success}/{len(cases)} repos ready")
