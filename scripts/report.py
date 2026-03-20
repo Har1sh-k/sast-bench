@@ -8,7 +8,9 @@ Usage:
 """
 
 import argparse
+import html
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -20,7 +22,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SASTbench Report - {scanner_name}</title>
 <style>
-  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 1200px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }}
   h1 {{ border-bottom: 2px solid #333; padding-bottom: 0.5rem; }}
   .meta {{ color: #666; font-size: 0.9rem; margin-bottom: 2rem; }}
   .summary {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin: 1.5rem 0; }}
@@ -29,12 +31,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .metric .label {{ font-size: 0.85rem; color: #666; margin-top: 0.25rem; }}
   .agentic {{ background: #e8f5e9; }}
   table {{ width: 100%; border-collapse: collapse; margin: 1.5rem 0; }}
-  th, td {{ padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #ddd; }}
+  th, td {{ padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #ddd; vertical-align: top; }}
   th {{ background: #f5f5f5; font-weight: 600; }}
   .tp {{ color: #2e7d32; }}
   .fn {{ color: #c62828; }}
   .cap-fp {{ color: #e65100; }}
   .fp {{ color: #f57f17; }}
+  .mono {{ font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.85rem; word-break: break-word; }}
+  .small {{ color: #666; font-size: 0.85rem; }}
   footer {{ margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ddd; color: #999; font-size: 0.8rem; }}
 </style>
 </head>
@@ -71,16 +75,39 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
 </div>
 
-<h2>Per-Case Results</h2>
+<h2>Per-Track Breakdown</h2>
 <table>
   <thead>
     <tr>
-      <th>Case ID</th>
+      <th>Track</th>
+      <th>Cases</th>
       <th>Findings</th>
       <th class="tp">TP</th>
       <th class="fn">FN</th>
       <th class="fp">FP</th>
       <th class="cap-fp">Cap FP</th>
+    </tr>
+  </thead>
+  <tbody>
+    {track_rows}
+  </tbody>
+</table>
+
+<h2>Per-Case Results</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Case ID</th>
+      <th>Track</th>
+      <th>Type</th>
+      <th>Language</th>
+      <th>Findings</th>
+      <th class="tp">TP</th>
+      <th class="fn">FN</th>
+      <th class="fp">FP</th>
+      <th class="cap-fp">Cap FP</th>
+      <th>Invocation</th>
+      <th>Raw Output</th>
     </tr>
   </thead>
   <tbody>
@@ -102,41 +129,113 @@ def format_pct(value: float) -> str:
     return f"{value:.1%}"
 
 
-def generate_report(results: dict) -> str:
+def rebase_link(relative_path: str | None, results_dir: Path, output_dir: Path) -> str | None:
+    """Rebase a stored artifact path from results-dir-relative to report-dir-relative."""
+    if not relative_path:
+        return None
+    target = (results_dir / relative_path).resolve()
+    return os.path.relpath(target, output_dir).replace("\\", "/")
+
+
+def join_command(command: list[str] | None) -> str:
+    """Render a command invocation compactly for HTML."""
+    if not command:
+        return "-"
+    return " ".join(html.escape(part) for part in command)
+
+
+def render_raw_links(artifacts: dict, results_dir: Path, output_dir: Path) -> str:
+    """Render links to raw stdout/stderr artifacts."""
+    links = []
+
+    stdout_link = rebase_link(artifacts.get("rawStdoutPath"), results_dir, output_dir)
+    stderr_link = rebase_link(artifacts.get("rawStderrPath"), results_dir, output_dir)
+    if stdout_link:
+        links.append(f"<a href=\"{html.escape(stdout_link)}\">stdout</a>")
+    if stderr_link:
+        links.append(f"<a href=\"{html.escape(stderr_link)}\">stderr</a>")
+
+    skip_reason = artifacts.get("skipReason")
+    if skip_reason:
+        links.append(f"<span class=\"small\">skip:{html.escape(skip_reason)}</span>")
+
+    return " | ".join(links) if links else "-"
+
+
+def generate_report(results: dict, results_dir: Path, output_dir: Path) -> str:
     """Generate HTML report from results JSON."""
     summary = results["summary"]
     scanner = results["scanner"]
 
+    track_totals: dict[str, dict[str, int]] = {}
+    for cr in results["caseResults"]:
+        track_key = cr["caseTrack"]
+        bucket = track_totals.setdefault(track_key, {
+            "cases": 0,
+            "findings": 0,
+            "tp": 0,
+            "fn": 0,
+            "fp": 0,
+            "cap_fp": 0,
+        })
+        bucket["cases"] += 1
+        bucket["findings"] += len(cr["findings"])
+        bucket["tp"] += cr["scoring"]["truePositives"]
+        bucket["fn"] += cr["scoring"]["falseNegatives"]
+        bucket["fp"] += cr["scoring"]["falsePositives"]
+        bucket["cap_fp"] += cr["scoring"]["capabilityFalsePositives"]
+
+    track_rows = []
+    for track_name in sorted(track_totals):
+        totals = track_totals[track_name]
+        track_rows.append(
+            f"<tr>"
+            f"<td>{html.escape(track_name)}</td>"
+            f"<td>{totals['cases']}</td>"
+            f"<td>{totals['findings']}</td>"
+            f"<td class='tp'>{totals['tp']}</td>"
+            f"<td class='fn'>{totals['fn']}</td>"
+            f"<td class='fp'>{totals['fp']}</td>"
+            f"<td class='cap-fp'>{totals['cap_fp']}</td>"
+            f"</tr>"
+        )
+
     case_rows = []
     for cr in results["caseResults"]:
         s = cr["scoring"]
-        row = (
-            f"    <tr>"
-            f"<td>{cr['caseId']}</td>"
+        artifacts = cr.get("artifacts", {})
+        case_rows.append(
+            f"<tr>"
+            f"<td>{html.escape(cr['caseId'])}</td>"
+            f"<td>{html.escape(cr['caseTrack'])}</td>"
+            f"<td>{html.escape(cr['caseType'])}</td>"
+            f"<td>{html.escape(cr['language'])}</td>"
             f"<td>{len(cr['findings'])}</td>"
             f"<td class='tp'>{s['truePositives']}</td>"
             f"<td class='fn'>{s['falseNegatives']}</td>"
             f"<td class='fp'>{s['falsePositives']}</td>"
             f"<td class='cap-fp'>{s['capabilityFalsePositives']}</td>"
+            f"<td class='mono'>{join_command(artifacts.get('commandInvocation'))}</td>"
+            f"<td>{render_raw_links(artifacts, results_dir, output_dir)}</td>"
             f"</tr>"
         )
-        case_rows.append(row)
 
-    html = HTML_TEMPLATE.format(
-        scanner_name=scanner["name"],
-        scanner_version=scanner["version"],
-        track=results["track"],
-        benchmark_version=results["benchmarkVersion"],
-        timestamp=results["timestamp"][:10],
+    html_output = HTML_TEMPLATE.format(
+        scanner_name=html.escape(scanner["name"]),
+        scanner_version=html.escape(scanner["version"]),
+        track=html.escape(results["track"]),
+        benchmark_version=html.escape(results["benchmarkVersion"]),
+        timestamp=html.escape(results["timestamp"][:10]),
         agentic_score=format_pct(summary["agenticScore"]),
         recall=format_pct(summary["recall"]),
         precision=format_pct(summary["precision"]),
         capability_fp_rate=format_pct(summary["capabilityFpRate"]),
         mixed_intent_accuracy=format_pct(summary["mixedIntentAccuracy"]),
+        track_rows="\n".join(track_rows),
         case_rows="\n".join(case_rows),
     )
 
-    return html
+    return html_output
 
 
 def main() -> int:
@@ -149,14 +248,14 @@ def main() -> int:
         print(f"Results file not found: {args.results}")
         return 1
 
-    with open(args.results) as f:
+    with open(args.results, encoding="utf-8") as f:
         results = json.load(f)
 
-    html = generate_report(results)
-
     output = args.output or args.results.with_suffix(".html")
-    with open(output, "w") as f:
-        f.write(html)
+    html_output = generate_report(results, args.results.parent.resolve(), output.parent.resolve())
+
+    with open(output, "w", encoding="utf-8") as f:
+        f.write(html_output)
 
     print(f"Report written to {output}")
     return 0
