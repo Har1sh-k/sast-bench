@@ -1,29 +1,31 @@
 """SASTbench adapter for Bandit.
 
-Runs Bandit on a case directory and normalizes output to the
-benchmark's canonical finding format. Bandit only supports Python.
+Runs Bandit on a case directory and returns normalized findings plus
+scanner invocation metadata. Bandit only supports Python.
 """
 
 import json
 import subprocess
 from pathlib import Path
 
+ADAPTER_VERSION = "1.1.0"
+
 # Bandit test ID to canonical kind mapping
 TEST_KIND_MAP = {
     # Subprocess / command injection
-    "B602": "command_injection",  # subprocess_popen_with_shell_equals_true
-    "B603": "command_injection",  # subprocess_without_shell_equals_true
-    "B604": "command_injection",  # any_other_function_with_shell_equals_true
-    "B605": "command_injection",  # start_process_with_a_shell
-    "B606": "command_injection",  # start_process_with_no_shell
-    "B607": "command_injection",  # start_process_with_partial_path
+    "B602": "command_injection",
+    "B603": "command_injection",
+    "B604": "command_injection",
+    "B605": "command_injection",
+    "B606": "command_injection",
+    "B607": "command_injection",
     # os.system / exec
-    "B102": "command_injection",  # exec_used
+    "B102": "command_injection",
     # Network / SSRF
-    "B310": "ssrf",  # urllib_urlopen
-    "B309": "ssrf",  # httpsconnection
+    "B310": "ssrf",
+    "B309": "ssrf",
     # File / path
-    "B108": "path_traversal",  # hardcoded_tmp_directory
+    "B108": "path_traversal",
 }
 
 # Broader pattern matching
@@ -72,33 +74,8 @@ def severity_map(bandit_severity: str) -> str:
     }.get(bandit_severity, "medium")
 
 
-def scan(scan_root: Path, language: str) -> list[dict]:
-    """Run Bandit on the scan root and return normalized findings."""
-    if language != "python":
-        return []
-
-    try:
-        result = subprocess.run(
-            [
-                "bandit",
-                "-r",
-                "-f", "json",
-                str(scan_root),
-            ],
-            capture_output=True, text=True, timeout=120,
-        )
-    except FileNotFoundError:
-        print("    bandit not found — install with: pip install bandit")
-        return []
-    except subprocess.TimeoutExpired:
-        print("    bandit timed out")
-        return []
-
-    try:
-        output = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return []
-
+def _parse_findings(output: dict, scan_root: Path) -> list[dict]:
+    """Normalize Bandit JSON output into benchmark findings."""
     findings = []
     scan_root_str = str(scan_root.resolve()).replace("\\", "/")
 
@@ -123,3 +100,66 @@ def scan(scan_root: Path, language: str) -> list[dict]:
         })
 
     return findings
+
+
+def scan_with_metadata(scan_root: Path, language: str) -> dict:
+    """Run Bandit and return findings plus raw output metadata."""
+    if language != "python":
+        return {
+            "findings": [],
+            "commandInvocation": None,
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": "",
+            "skipReason": "language_not_supported",
+        }
+
+    command = [
+        "bandit",
+        "-r",
+        "-f", "json",
+        str(scan_root),
+    ]
+
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    except FileNotFoundError:
+        message = "bandit not found - install with: pip install bandit"
+        print(f"    {message}")
+        return {
+            "findings": [],
+            "commandInvocation": command,
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": message,
+            "skipReason": "scanner_not_installed",
+        }
+    except subprocess.TimeoutExpired:
+        print("    bandit timed out")
+        return {
+            "findings": [],
+            "commandInvocation": command,
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": "bandit timed out",
+            "skipReason": "timeout",
+        }
+
+    try:
+        output = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        output = {}
+
+    return {
+        "findings": _parse_findings(output, scan_root),
+        "commandInvocation": command,
+        "exitCode": result.returncode,
+        "rawStdout": result.stdout,
+        "rawStderr": result.stderr,
+        "skipReason": None,
+    }
+
+
+def scan(scan_root: Path, language: str) -> list[dict]:
+    """Backward-compatible findings-only wrapper."""
+    return scan_with_metadata(scan_root, language)["findings"]

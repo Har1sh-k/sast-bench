@@ -27,6 +27,17 @@ def scan(scan_root: Path, language: str) -> list[dict]:
     ...
 ```
 
+Official adapters should also expose:
+
+```python
+def scan_with_metadata(scan_root: Path, language: str) -> dict:
+    """Return findings plus raw stdout/stderr and command metadata."""
+    ...
+```
+
+`scan_with_metadata()` is what lets the benchmark preserve raw scanner
+output for auditing and link to those artifacts from reports.
+
 ## Official Adapters
 
 | Adapter | Scanner | Languages |

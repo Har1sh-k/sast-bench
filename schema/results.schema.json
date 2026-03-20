@@ -64,11 +64,26 @@
   "$defs": {
     "caseResult": {
       "type": "object",
-      "required": ["caseId", "findings", "scoring"],
+      "required": ["caseId", "caseTrack", "caseType", "language", "findings", "scoring", "artifacts"],
       "properties": {
         "caseId": {
           "type": "string",
           "description": "The benchmark case ID"
+        },
+        "caseTrack": {
+          "type": "string",
+          "enum": ["core", "full"],
+          "description": "Track the case belongs to"
+        },
+        "caseType": {
+          "type": "string",
+          "enum": ["synthetic_vulnerable", "capability_safe", "mixed_intent", "real_world_disclosed"],
+          "description": "Case type for reporting and aggregation"
+        },
+        "language": {
+          "type": "string",
+          "enum": ["python", "typescript", "rust"],
+          "description": "Primary language of the case"
         },
         "findings": {
           "type": "array",
@@ -78,6 +93,37 @@
         },
         "scoring": {
           "$ref": "#/$defs/caseScoring"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/artifacts"
+        }
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["commandInvocation", "exitCode", "rawStdoutPath", "rawStderrPath", "skipReason"],
+      "properties": {
+        "commandInvocation": {
+          "type": ["array", "null"],
+          "items": { "type": "string" },
+          "description": "Exact scanner command used for this case"
+        },
+        "exitCode": {
+          "type": ["integer", "null"],
+          "description": "Scanner process exit code, if one was produced"
+        },
+        "rawStdoutPath": {
+          "type": ["string", "null"],
+          "description": "Path to raw stdout relative to the results JSON directory"
+        },
+        "rawStderrPath": {
+          "type": ["string", "null"],
+          "description": "Path to raw stderr relative to the results JSON directory"
+        },
+        "skipReason": {
+          "type": ["string", "null"],
+          "description": "Reason the adapter did not run this case, if applicable"
         }
       },
       "additionalProperties": false

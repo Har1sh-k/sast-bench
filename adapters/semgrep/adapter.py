@@ -1,12 +1,14 @@
 """SASTbench adapter for Semgrep.
 
-Runs Semgrep on a case directory and normalizes output to the
-benchmark's canonical finding format.
+Runs Semgrep on a case directory and returns normalized findings plus
+scanner invocation metadata for auditability.
 """
 
 import json
 import subprocess
 from pathlib import Path
+
+ADAPTER_VERSION = "1.1.0"
 
 # Rule ID to canonical kind mapping
 RULE_KIND_MAP = {
@@ -82,42 +84,12 @@ def severity_map(semgrep_severity: str) -> str:
     }.get(semgrep_severity, "medium")
 
 
-def scan(scan_root: Path, language: str) -> list[dict]:
-    """Run Semgrep on the scan root and return normalized findings."""
-    lang_flag = {
-        "python": "python",
-        "typescript": "typescript",
-        "rust": "rust",
-    }.get(language, language)
-
-    try:
-        result = subprocess.run(
-            [
-                "semgrep", "scan",
-                "--json",
-                "--config", "auto",
-                "--lang", lang_flag,
-                str(scan_root),
-            ],
-            capture_output=True, text=True, timeout=120,
-        )
-    except FileNotFoundError:
-        print("    semgrep not found — install with: pip install semgrep")
-        return []
-    except subprocess.TimeoutExpired:
-        print("    semgrep timed out")
-        return []
-
-    try:
-        output = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return []
-
+def _parse_findings(output: dict, scan_root: Path) -> list[dict]:
+    """Normalize Semgrep JSON output into benchmark findings."""
     findings = []
     scan_root_str = str(scan_root.resolve()).replace("\\", "/")
 
     for match in output.get("results", []):
-        # Make path relative to scan root
         abs_path = match.get("path", "")
         rel_path = abs_path.replace("\\", "/")
         if rel_path.startswith(scan_root_str):
@@ -137,3 +109,62 @@ def scan(scan_root: Path, language: str) -> list[dict]:
         })
 
     return findings
+
+
+def scan_with_metadata(scan_root: Path, language: str) -> dict:
+    """Run Semgrep and return findings plus raw output metadata."""
+    lang_flag = {
+        "python": "python",
+        "typescript": "typescript",
+        "rust": "rust",
+    }.get(language, language)
+    command = [
+        "semgrep", "scan",
+        "--json",
+        "--config", "auto",
+        "--lang", lang_flag,
+        str(scan_root),
+    ]
+
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    except FileNotFoundError:
+        message = "semgrep not found - install with: pip install semgrep"
+        print(f"    {message}")
+        return {
+            "findings": [],
+            "commandInvocation": command,
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": message,
+            "skipReason": "scanner_not_installed",
+        }
+    except subprocess.TimeoutExpired:
+        print("    semgrep timed out")
+        return {
+            "findings": [],
+            "commandInvocation": command,
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": "semgrep timed out",
+            "skipReason": "timeout",
+        }
+
+    try:
+        output = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        output = {}
+
+    return {
+        "findings": _parse_findings(output, scan_root),
+        "commandInvocation": command,
+        "exitCode": result.returncode,
+        "rawStdout": result.stdout,
+        "rawStderr": result.stderr,
+        "skipReason": None,
+    }
+
+
+def scan(scan_root: Path, language: str) -> list[dict]:
+    """Backward-compatible findings-only wrapper."""
+    return scan_with_metadata(scan_root, language)["findings"]

@@ -40,7 +40,7 @@ def find_cases(
 
     for search_dir in search_dirs:
         for case_json in sorted(search_dir.rglob("case.json")):
-            with open(case_json) as f:
+            with open(case_json, encoding="utf-8") as f:
                 case = json.load(f)
             if case_type and case["caseType"] != case_type:
                 continue
@@ -69,6 +69,23 @@ def load_adapter(scanner_name: str):
     return adapter
 
 
+def default_output_path(scanner_name: str, track: str, started_at: datetime) -> Path:
+    """Build a default output path when none is provided."""
+    stamp = started_at.strftime("%Y%m%dT%H%M%SZ")
+    return REPO_ROOT / "results" / f"{scanner_name}_{track}_{stamp}.json"
+
+
+def normalize_relpath(path: Path, base_dir: Path) -> str:
+    """Convert a path into a forward-slash relative path."""
+    return str(path.relative_to(base_dir)).replace("\\", "/")
+
+
+def write_artifact(path: Path, content: str) -> None:
+    """Write an artifact file as UTF-8 text."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
 def run_benchmark(
     scanner_name: str,
     track: str,
@@ -77,7 +94,13 @@ def run_benchmark(
     case_id: str | None = None,
 ) -> int:
     """Run the benchmark and produce results."""
+    started_at = datetime.now(timezone.utc)
+    output_path = output_path or default_output_path(scanner_name, track, started_at)
+    output_dir = output_path.parent
+    artifacts_root = output_dir / f"{output_path.stem}_artifacts"
+
     adapter = load_adapter(scanner_name)
+    adapter_version = getattr(adapter, "ADAPTER_VERSION", "1.0.0")
     cases = find_cases(track, case_type, case_id)
 
     if not cases:
@@ -93,18 +116,32 @@ def run_benchmark(
     all_cases = []
 
     for case_dir, case in cases:
-        case_id = case["id"]
+        current_case_id = case["id"]
         scan_root = case_dir / case["files"]["root"]
 
-        print(f"  Scanning {case_id}...", end=" ", flush=True)
+        print(f"  Scanning {current_case_id}...", end=" ", flush=True)
+
+        scan_meta = {
+            "findings": [],
+            "commandInvocation": None,
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": "",
+            "skipReason": None,
+        }
 
         try:
-            raw_findings = adapter.scan(scan_root, case["language"])
+            if hasattr(adapter, "scan_with_metadata"):
+                scan_meta = adapter.scan_with_metadata(scan_root, case["language"])
+            else:
+                scan_meta["findings"] = adapter.scan(scan_root, case["language"])
         except Exception as e:
             print(f"ERROR: {e}")
-            raw_findings = []
+            scan_meta["rawStderr"] = str(e)
+            scan_meta["skipReason"] = "adapter_error"
 
-        # Convert adapter findings to Finding objects
+        raw_findings = scan_meta["findings"]
+
         findings = []
         for rf in raw_findings:
             findings.append(Finding(
@@ -121,7 +158,6 @@ def run_benchmark(
         all_scorings.append(scoring)
         all_cases.append(case)
 
-        # Build per-case result with per-finding audit trail
         finding_dicts = []
         for f, fc in zip(findings, classifications):
             finding_dicts.append({
@@ -136,8 +172,30 @@ def run_benchmark(
                 "classification": fc.classification,
             })
 
+        artifact_info = {
+            "commandInvocation": scan_meta.get("commandInvocation"),
+            "exitCode": scan_meta.get("exitCode"),
+            "rawStdoutPath": None,
+            "rawStderrPath": None,
+            "skipReason": scan_meta.get("skipReason"),
+        }
+
+        raw_stdout = scan_meta.get("rawStdout", "")
+        raw_stderr = scan_meta.get("rawStderr", "")
+        if raw_stdout or raw_stderr:
+            case_artifact_dir = artifacts_root / current_case_id
+            stdout_path = case_artifact_dir / "scanner.stdout.txt"
+            stderr_path = case_artifact_dir / "scanner.stderr.txt"
+            write_artifact(stdout_path, raw_stdout)
+            write_artifact(stderr_path, raw_stderr)
+            artifact_info["rawStdoutPath"] = normalize_relpath(stdout_path, output_dir)
+            artifact_info["rawStderrPath"] = normalize_relpath(stderr_path, output_dir)
+
         case_results.append({
-            "caseId": case_id,
+            "caseId": current_case_id,
+            "caseTrack": case["track"],
+            "caseType": case["caseType"],
+            "language": case["language"],
             "findings": finding_dicts,
             "scoring": {
                 "truePositives": scoring.true_positives,
@@ -145,6 +203,7 @@ def run_benchmark(
                 "falsePositives": scoring.false_positives,
                 "capabilityFalsePositives": scoring.capability_false_positives,
             },
+            "artifacts": artifact_info,
         })
 
         status_parts = []
@@ -154,6 +213,8 @@ def run_benchmark(
             status_parts.append(f"FN={scoring.false_negatives}")
         if scoring.capability_false_positives:
             status_parts.append(f"CapFP={scoring.capability_false_positives}")
+        if scan_meta.get("skipReason"):
+            status_parts.append(f"skip={scan_meta['skipReason']}")
         print(" | ".join(status_parts) if status_parts else "no findings")
 
     summary = compute_summary(all_scorings, all_cases)
@@ -164,10 +225,10 @@ def run_benchmark(
         "scanner": {
             "name": scanner_name,
             "version": scanner_version,
-            "adapter": "1.0.0",
+            "adapter": adapter_version,
         },
         "track": track,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": started_at.isoformat(),
         "caseResults": case_results,
         "summary": {
             "recall": summary.recall,
@@ -179,7 +240,7 @@ def run_benchmark(
     }
 
     print(f"\n{'='*50}")
-    print(f"Results — {scanner_name} v{scanner_version} ({track} track)")
+    print(f"Results - {scanner_name} v{scanner_version} ({track} track)")
     print(f"{'='*50}")
     print(f"  Recall:                {summary.recall:.1%}")
     print(f"  Precision:             {summary.precision:.1%}")
@@ -187,12 +248,12 @@ def run_benchmark(
     print(f"  Mixed-Intent Accuracy: {summary.mixed_intent_accuracy:.1%}")
     print(f"  Agentic Score:         {summary.agentic_score:.1%}")
 
-    if output_path:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(results, f, indent=2)
-        print(f"\nResults written to {output_path}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
 
+    print(f"\nResults written to {output_path}")
+    print(f"Raw artifacts written to {artifacts_root}")
     return 0
 
 
@@ -200,7 +261,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="SASTbench runner")
     parser.add_argument("--scanner", required=True, help="Scanner adapter name")
     parser.add_argument("--track", default="core", choices=["core", "full"])
-    parser.add_argument("--output", "-o", type=Path, help="Output JSON file path")
+    parser.add_argument("--output", "-o", type=Path, help="Output JSON file path (defaults under results/)")
     parser.add_argument(
         "--case-type",
         choices=["synthetic_vulnerable", "capability_safe", "mixed_intent", "real_world_disclosed"],
