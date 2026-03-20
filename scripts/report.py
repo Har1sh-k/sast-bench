@@ -63,29 +63,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <strong>Date:</strong> {timestamp}
 </div>
 
-<h2>Summary Metrics</h2>
+<h2>Summary</h2>
 <div class="summary">
   <div class="metric agentic">
-    <div class="value">{agentic_score}</div>
-    <div class="label">Agentic Score</div>
-  </div>
-  <div class="metric">
     <div class="value">{recall}</div>
-    <div class="label">Recall</div>
-  </div>
-  <div class="metric">
-    <div class="value">{precision}</div>
-    <div class="label">Precision</div>
-  </div>
-  <div class="metric">
-    <div class="value">{capability_fp_rate}</div>
-    <div class="label">Capability FP Rate</div>
+    <div class="label">Target Hit Rate</div>
   </div>
   <div class="metric">
     <div class="value">{mixed_intent_accuracy}</div>
-    <div class="label">Mixed-Intent Accuracy</div>
+    <div class="label">Intent Accuracy</div>
   </div>
+  <div class="metric">
+    <div class="value">{capability_fp_rate}</div>
+    <div class="label">Capability Noise</div>
+  </div>
+  {precision_metric}
 </div>
+{track_note}
 
 <h2>Per-Track Breakdown</h2>
 <table>
@@ -94,10 +88,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <th>Track</th>
       <th>Cases</th>
       <th>Findings</th>
-      <th class="tp">TP</th>
-      <th class="fn">FN</th>
-      <th class="fp">FP</th>
-      <th class="cap-fp">Cap FP</th>
+      <th class="tp">Targets Hit</th>
+      <th class="fn">Targets Missed</th>
+      <th class="fp">Additional</th>
+      <th class="cap-fp">Cap Noise</th>
     </tr>
   </thead>
   <tbody>
@@ -114,10 +108,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <th>Type</th>
       <th>Language</th>
       <th>Findings</th>
-      <th class="tp">TP</th>
-      <th class="fn">FN</th>
-      <th class="fp">FP</th>
-      <th class="cap-fp">Cap FP</th>
+      <th class="tp">Targets Hit</th>
+      <th class="fn">Missed</th>
+      <th class="fp">Additional</th>
+      <th class="cap-fp">Cap Noise</th>
       <th>Invocation</th>
       <th>Raw Output</th>
     </tr>
@@ -311,20 +305,45 @@ def generate_report(results: dict, results_dir: Path, output_dir: Path, deep: bo
             deep_parts.append(render_case_deep_section(cr))
         deep_html = "\n".join(deep_parts)
 
+    # Precision only in deep/verbose mode
+    if deep:
+        precision_metric = (
+            f'<div class="metric">'
+            f'<div class="value">{format_pct(summary["precision"])}</div>'
+            f'<div class="label">Precision</div>'
+            f'</div>'
+        )
+    else:
+        precision_metric = ""
+
+    # Track-aware context note
+    track_key = results["track"]
+    if track_key == "full":
+        track_note = (
+            '<p class="small"><strong>Note:</strong> Full Track includes real-world disclosed cases. '
+            '"Additional findings" on these cases may be legitimate issues in the target repo, '
+            'not necessarily false positives. Only the disclosed target vulnerability is scored.</p>'
+        )
+    else:
+        track_note = (
+            '<p class="small"><strong>Note:</strong> Core Track cases are self-contained synthetic benchmarks '
+            'with strictly defined vulnerable and safe regions.</p>'
+        )
+
     html_output = HTML_TEMPLATE.format(
         scanner_name=html.escape(scanner["name"]),
         scanner_version=html.escape(scanner["version"]),
         track=html.escape(results["track"]),
         benchmark_version=html.escape(results["benchmarkVersion"]),
         timestamp=html.escape(results["timestamp"][:10]),
-        agentic_score=format_pct(summary["agenticScore"]),
         recall=format_pct(summary["recall"]),
-        precision=format_pct(summary["precision"]),
         capability_fp_rate=format_pct(summary["capabilityFpRate"]),
+        precision_metric=precision_metric,
         mixed_intent_accuracy=format_pct(summary["mixedIntentAccuracy"]),
         track_rows="\n".join(track_rows),
         case_rows="\n".join(case_rows),
         deep_section=deep_html,
+        track_note=track_note,
     )
 
     return html_output

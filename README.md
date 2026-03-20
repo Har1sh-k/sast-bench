@@ -134,11 +134,20 @@ These numbers vary slightly across semgrep/bandit versions and rule sets. They a
 
 ## Scoring
 
-**Agentic Score** = geometric_mean(Recall, 1 - Capability FP Rate, Mixed-Intent Accuracy)
+Default reporting uses security-readable labels:
 
-- **Recall**: rewards real vulnerability detection
-- **1 - Capability FP Rate**: rewards low noise on intentional capability code
-- **Mixed-Intent Accuracy**: rewards correct boundary understanding inside one repo
+- **Target Hit Rate**: did the scanner detect the disclosed/annotated vulnerability?
+- **Intent Accuracy**: in mixed-intent cases (safe + unsafe code together), did the scanner correctly hit the target without flagging the guarded code?
+- **Capability Noise**: how often did the scanner flag properly guarded capability code?
+- **Additional Findings**: findings beyond the annotated target (on Full Track real-world cases these may be legitimate, not necessarily wrong)
+
+Verbose mode (`--verbose`) also shows the underlying benchmark internals: Recall, Precision, Capability FP Rate, Mixed-Intent Accuracy, and Benchmark Index (geometric mean of Recall, 1 - Capability FP Rate, Intent Accuracy).
+
+### Core Track vs Full Track scoring language
+
+**Core Track** cases are closed-world synthetic benchmarks. Every finding outside the annotated region is a known false positive. Strict scoring labels apply.
+
+**Full Track** cases are real-world repo snapshots with one disclosed vulnerability. Additional findings may be legitimate issues in the repo. The benchmark only scores whether the disclosed target was detected — it does not claim that every other finding is wrong.
 
 ## OWASP Agentic Top 10 Alignment
 

@@ -22,20 +22,20 @@ class _FakeScoring:
     capability_false_positives: int = 0
 
 
-def test_outcome_hit():
-    assert _case_outcome(_FakeScoring(true_positives=1), None) == "HIT"
+def test_outcome_target_hit():
+    assert _case_outcome(_FakeScoring(true_positives=1), None) == "TARGET HIT"
 
 
-def test_outcome_hit_noisy_fp():
-    assert _case_outcome(_FakeScoring(true_positives=1, false_positives=3), None) == "HIT (noisy)"
+def test_outcome_target_hit_noisy_fp():
+    assert _case_outcome(_FakeScoring(true_positives=1, false_positives=3), None) == "TARGET HIT (noisy)"
 
 
-def test_outcome_hit_noisy_capfp():
-    assert _case_outcome(_FakeScoring(true_positives=1, capability_false_positives=1), None) == "HIT (noisy)"
+def test_outcome_target_hit_noisy_capfp():
+    assert _case_outcome(_FakeScoring(true_positives=1, capability_false_positives=1), None) == "TARGET HIT (noisy)"
 
 
-def test_outcome_miss():
-    assert _case_outcome(_FakeScoring(false_negatives=1), None) == "MISS"
+def test_outcome_target_miss():
+    assert _case_outcome(_FakeScoring(false_negatives=1), None) == "TARGET MISS"
 
 
 def test_outcome_clean():
@@ -59,24 +59,24 @@ def test_outcome_skip():
 # _format_default_status
 # ---------------------------------------------------------------------------
 
-def test_format_hit_clean():
+def test_format_target_hit_clean():
     s = _format_default_status(_FakeScoring(true_positives=1), None)
-    assert s == "HIT"
+    assert s == "TARGET HIT"
 
 
-def test_format_miss_with_fn():
+def test_format_target_miss():
     s = _format_default_status(_FakeScoring(false_negatives=1), None)
-    assert "MISS" in s
-    assert "FN=1" in s
+    assert "TARGET MISS" in s
+    assert "missed=1" in s
 
 
-def test_format_hit_with_fp_and_capfp():
+def test_format_hit_with_additional_and_cap_noise():
     s = _format_default_status(
         _FakeScoring(true_positives=1, false_positives=2, capability_false_positives=1), None
     )
-    assert "HIT" in s
-    assert "FP=2" in s
-    assert "CapFP=1" in s
+    assert "TARGET HIT" in s
+    assert "additional=2" in s
+    assert "cap-noise=1" in s
 
 
 def test_format_skip():
@@ -222,3 +222,53 @@ def test_generate_report_deep_has_audit_section(tmp_path):
     assert "Finding-Level Audit Trail" in html_out
     assert "SB-PY-SV-001" in html_out
     assert "class=\"finding tp\"" in html_out
+
+
+# ---------------------------------------------------------------------------
+# Security-readable labels in report
+# ---------------------------------------------------------------------------
+
+def _make_results(track="core"):
+    return {
+        "schemaVersion": "1.0.0",
+        "benchmarkVersion": "1.0.0-dev",
+        "scanner": {"name": "test", "version": "1.0", "adapter": "1.0"},
+        "track": track,
+        "timestamp": "2026-01-01T00:00:00Z",
+        "caseResults": [{
+            "caseId": "SB-PY-SV-001", "caseTrack": track, "caseType": "synthetic_vulnerable",
+            "language": "python",
+            "findings": [{"classification": "true_positive", "path": "a.py", "startLine": 1,
+                          "endLine": 1, "mappedKind": "ssrf", "ruleId": "r", "severity": "high", "message": "x"}],
+            "scoring": {"truePositives": 1, "falseNegatives": 0, "falsePositives": 0, "capabilityFalsePositives": 0},
+            "artifacts": {"commandInvocation": None, "exitCode": None, "rawStdoutPath": None, "rawStderrPath": None, "skipReason": None},
+        }],
+        "summary": {"recall": 1.0, "precision": 1.0, "capabilityFpRate": 0.0, "mixedIntentAccuracy": 1.0, "agenticScore": 1.0},
+    }
+
+
+def test_report_uses_security_readable_labels(tmp_path):
+    html_out = generate_report(_make_results(), tmp_path, tmp_path)
+    assert "Target Hit Rate" in html_out
+    assert "Intent Accuracy" in html_out
+    assert "Capability Noise" in html_out
+    # Agentic Score should NOT be a headline metric in default mode
+    assert "Agentic Score" not in html_out
+
+
+def test_report_core_track_note(tmp_path):
+    html_out = generate_report(_make_results("core"), tmp_path, tmp_path)
+    assert "closed-world" in html_out.lower() or "synthetic" in html_out.lower()
+
+
+def test_report_full_track_note(tmp_path):
+    html_out = generate_report(_make_results("full"), tmp_path, tmp_path)
+    assert "additional findings" in html_out.lower() or "not necessarily false positives" in html_out.lower()
+
+
+def test_report_table_headers_security_readable(tmp_path):
+    html_out = generate_report(_make_results(), tmp_path, tmp_path)
+    assert "Targets Hit" in html_out
+    assert "Targets Missed" in html_out or "Missed" in html_out
+    assert "Additional" in html_out
+    assert "Cap Noise" in html_out

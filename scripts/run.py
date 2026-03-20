@@ -93,24 +93,24 @@ def _case_outcome(scoring, skip_reason: str | None) -> str:
     if skip_reason:
         return "SKIP"
     if scoring.false_negatives > 0 and scoring.true_positives == 0:
-        return "MISS"
+        return "TARGET MISS"
     if scoring.true_positives > 0:
         noise = scoring.false_positives + scoring.capability_false_positives
-        return "HIT" if noise == 0 else "HIT (noisy)"
+        return "TARGET HIT" if noise == 0 else "TARGET HIT (noisy)"
     noise = scoring.false_positives + scoring.capability_false_positives
     return "CLEAN" if noise == 0 else "NOISY"
 
 
 def _format_default_status(scoring, skip_reason: str | None) -> str:
-    """Format a concise one-line status for default mode."""
+    """Format a concise one-line status for default mode using security-readable language."""
     outcome = _case_outcome(scoring, skip_reason)
     parts = [outcome]
     if scoring.false_negatives:
-        parts.append(f"FN={scoring.false_negatives}")
+        parts.append(f"missed={scoring.false_negatives}")
     if scoring.false_positives:
-        parts.append(f"FP={scoring.false_positives}")
+        parts.append(f"additional={scoring.false_positives}")
     if scoring.capability_false_positives:
-        parts.append(f"CapFP={scoring.capability_false_positives}")
+        parts.append(f"cap-noise={scoring.capability_false_positives}")
     if skip_reason:
         parts.append(f"skip={skip_reason}")
     return " | ".join(parts)
@@ -295,11 +295,16 @@ def run_benchmark(
     print(f"\n{B} {'='*50}")
     print(f"{B} Results - {scanner_name} v{scanner_version} ({track} track)")
     print(f"{B} {'='*50}")
-    print(f"{B}   Recall:                {summary.recall:.1%}")
-    print(f"{B}   Precision:             {summary.precision:.1%}")
-    print(f"{B}   Capability FP Rate:    {summary.capability_fp_rate:.1%}")
-    print(f"{B}   Mixed-Intent Accuracy: {summary.mixed_intent_accuracy:.1%}")
-    print(f"{B}   Agentic Score:         {summary.agentic_score:.1%}")
+    print(f"{B}   Target Hit Rate:       {summary.recall:.1%}")
+    print(f"{B}   Intent Accuracy:       {summary.mixed_intent_accuracy:.1%}")
+    print(f"{B}   Capability Noise:      {summary.capability_fp_rate:.1%}")
+    if verbose:
+        print(f"{B}   ---")
+        print(f"{B}   Recall:                {summary.recall:.1%}")
+        print(f"{B}   Precision:             {summary.precision:.1%}")
+        print(f"{B}   Capability FP Rate:    {summary.capability_fp_rate:.1%}")
+        print(f"{B}   Mixed-Intent Accuracy: {summary.mixed_intent_accuracy:.1%}")
+        print(f"{B}   Benchmark Index:       {summary.agentic_score:.1%}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
