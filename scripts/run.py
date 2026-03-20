@@ -107,8 +107,10 @@ def run_benchmark(
         print("No cases found.")
         return 1
 
-    print(f"Running SASTbench ({track} track) with {scanner_name}")
-    print(f"Found {len(cases)} cases\n")
+    B = "\033[1;36m[SASTbench]\033[0m"
+    SEP = "\033[2m" + "─" * 45 + "\033[0m"
+    print(f"{B} Running SASTbench ({track} track) with {scanner_name}")
+    print(f"{B} Found {len(cases)} cases\n")
 
     scanner_version = adapter.get_version()
     case_results = []
@@ -119,7 +121,8 @@ def run_benchmark(
         current_case_id = case["id"]
         scan_root = case_dir / case["files"]["root"]
 
-        print(f"  Scanning {current_case_id}...", end=" ", flush=True)
+        print(f"{B} Scanning {current_case_id}...")
+        print(f"{SEP}", flush=True)
 
         scan_meta = {
             "findings": [],
@@ -136,7 +139,7 @@ def run_benchmark(
             else:
                 scan_meta["findings"] = adapter.scan(scan_root, case["language"])
         except Exception as e:
-            print(f"ERROR: {e}")
+            print(f"{B} ERROR: {e}")
             scan_meta["rawStderr"] = str(e)
             scan_meta["skipReason"] = "adapter_error"
 
@@ -215,7 +218,9 @@ def run_benchmark(
             status_parts.append(f"CapFP={scoring.capability_false_positives}")
         if scan_meta.get("skipReason"):
             status_parts.append(f"skip={scan_meta['skipReason']}")
-        print(" | ".join(status_parts) if status_parts else "no findings")
+        result_str = " | ".join(status_parts) if status_parts else "no findings"
+        print(f"{SEP}")
+        print(f"{B} {current_case_id} → {result_str}\n")
 
     summary = compute_summary(all_scorings, all_cases)
 
@@ -239,21 +244,21 @@ def run_benchmark(
         },
     }
 
-    print(f"\n{'='*50}")
-    print(f"Results - {scanner_name} v{scanner_version} ({track} track)")
-    print(f"{'='*50}")
-    print(f"  Recall:                {summary.recall:.1%}")
-    print(f"  Precision:             {summary.precision:.1%}")
-    print(f"  Capability FP Rate:    {summary.capability_fp_rate:.1%}")
-    print(f"  Mixed-Intent Accuracy: {summary.mixed_intent_accuracy:.1%}")
-    print(f"  Agentic Score:         {summary.agentic_score:.1%}")
+    print(f"\n{B} {'='*50}")
+    print(f"{B} Results - {scanner_name} v{scanner_version} ({track} track)")
+    print(f"{B} {'='*50}")
+    print(f"{B}   Recall:                {summary.recall:.1%}")
+    print(f"{B}   Precision:             {summary.precision:.1%}")
+    print(f"{B}   Capability FP Rate:    {summary.capability_fp_rate:.1%}")
+    print(f"{B}   Mixed-Intent Accuracy: {summary.mixed_intent_accuracy:.1%}")
+    print(f"{B}   Agentic Score:         {summary.agentic_score:.1%}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 
-    print(f"\nResults written to {output_path}")
-    print(f"Raw artifacts written to {artifacts_root}")
+    print(f"{B} Results written to {output_path}")
+    print(f"{B} Raw artifacts written to {artifacts_root}")
     return 0
 
 
