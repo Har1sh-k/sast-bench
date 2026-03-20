@@ -18,17 +18,23 @@
       "endLine": 78,
       "label": "vulnerable",
       "capability": "authentication",
-      "acceptedKinds": ["auth_bypass"]
+      "acceptedKinds": [
+        "auth_bypass"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R1"],
+    "mustDetectRegionIds": [
+      "R1"
+    ],
     "mustNotFlagRegionIds": []
   },
   "standards": {
     "owaspAgenticTop10": {
       "primary": "ASI07",
-      "secondary": ["ASI05"]
+      "secondary": [
+        "ASI03"
+      ]
     }
   }
 }

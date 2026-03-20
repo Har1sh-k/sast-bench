@@ -18,11 +18,15 @@
       "endLine": 52,
       "label": "vulnerable",
       "capability": "filesystem",
-      "acceptedKinds": ["path_traversal"]
+      "acceptedKinds": [
+        "path_traversal"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R1"],
+    "mustDetectRegionIds": [
+      "R1"
+    ],
     "mustNotFlagRegionIds": []
   },
   "realWorld": {
@@ -35,7 +39,9 @@
   "standards": {
     "owaspAgenticTop10": {
       "primary": "ASI04",
-      "secondary": ["ASI02"]
+      "secondary": [
+        "ASI02"
+      ]
     }
   }
 }

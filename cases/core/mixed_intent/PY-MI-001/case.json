@@ -18,7 +18,9 @@
       "endLine": 51,
       "label": "capability_safe",
       "capability": "network",
-      "requiredGuards": ["host_allowlist"]
+      "requiredGuards": [
+        "host_allowlist"
+      ]
     },
     {
       "id": "R2",
@@ -27,17 +29,22 @@
       "endLine": 48,
       "label": "vulnerable",
       "capability": "network",
-      "acceptedKinds": ["ssrf"]
+      "acceptedKinds": [
+        "ssrf"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R2"],
-    "mustNotFlagRegionIds": ["R1"]
+    "mustDetectRegionIds": [
+      "R2"
+    ],
+    "mustNotFlagRegionIds": [
+      "R1"
+    ]
   },
   "standards": {
     "owaspAgenticTop10": {
-      "primary": "ASI03",
-      "secondary": ["ASI02"]
+      "primary": "ASI02"
     }
   }
 }

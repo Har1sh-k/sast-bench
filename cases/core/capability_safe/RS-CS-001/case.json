@@ -18,16 +18,20 @@
       "endLine": 130,
       "label": "capability_safe",
       "capability": "filesystem",
-      "requiredGuards": ["workspace_root"]
+      "requiredGuards": [
+        "workspace_root"
+      ]
     }
   ],
   "expectedOutcome": {
     "mustDetectRegionIds": [],
-    "mustNotFlagRegionIds": ["R1"]
+    "mustNotFlagRegionIds": [
+      "R1"
+    ]
   },
   "standards": {
     "owaspAgenticTop10": {
-      "primary": "ASI03"
+      "primary": "ASI02"
     }
   }
 }

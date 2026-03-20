@@ -18,16 +18,20 @@
       "endLine": 101,
       "label": "capability_safe",
       "capability": "code_execution",
-      "requiredGuards": ["allowlist"]
+      "requiredGuards": [
+        "allowlist"
+      ]
     }
   ],
   "expectedOutcome": {
     "mustDetectRegionIds": [],
-    "mustNotFlagRegionIds": ["R1"]
+    "mustNotFlagRegionIds": [
+      "R1"
+    ]
   },
   "standards": {
     "owaspAgenticTop10": {
-      "primary": "ASI03"
+      "primary": "ASI05"
     }
   }
 }

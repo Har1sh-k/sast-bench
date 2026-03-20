@@ -18,11 +18,15 @@
       "endLine": 3540,
       "label": "vulnerable",
       "capability": "network",
-      "acceptedKinds": ["ssrf"]
+      "acceptedKinds": [
+        "ssrf"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R1"],
+    "mustDetectRegionIds": [
+      "R1"
+    ],
     "mustNotFlagRegionIds": []
   },
   "realWorld": {

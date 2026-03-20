@@ -1,152 +1,167 @@
-# OWASP Agentic Security Top 10 -- SASTbench Mapping
+# OWASP Agentic Top 10 -- SASTbench Mapping
 
-SASTbench aligns with the [OWASP Top 10 for Agentic Security](https://owasp.org/www-project-top-10-for-agentic-security/) as a **reporting crosswalk**, not a replacement for the benchmark's own scoring taxonomy.
+SASTbench aligns with the [OWASP Top 10 for Agentic Applications for 2026](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) as a **reporting crosswalk**, not a replacement for the benchmark's own scoring taxonomy.
 
-The mapping documented here enables users and report consumers to filter or aggregate SASTbench results by OWASP ASI category.  It does not change how cases are scored.  SASTbench scoring always uses its own 5-kind canonical taxonomy (`command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`) plus region overlap matching.  The OWASP mapping is metadata layered on top.
+The mapping documented here enables users and report consumers to filter or aggregate SASTbench results by OWASP ASI category. It does not change how cases are scored. SASTbench scoring always uses its own 5-kind canonical taxonomy (`command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`) plus region overlap matching. The OWASP mapping is metadata layered on top.
 
 ## Mapping Table
 
-| ASI ID | OWASP Category | SASTbench Kind(s) | Coverage | SAST Suitability |
-|--------|----------------|-------------------|----------|------------------|
-| ASI01 | Prompt Injection / Agent Goal Hijack | `command_injection` | Covered (PY-SV-003 + secondaries) | Medium -- SAST detects where untrusted prompt data reaches tool sinks |
-| ASI02 | Improper Output Handling | `command_injection`, `ssrf`, `path_traversal` | Strong -- primary coverage across most cases | High -- classic taint from LLM output to sinks |
-| ASI03 | Excessive Agency | `command_injection`, `path_traversal` | Covered -- mixed\_intent + capability\_safe cases | Medium -- SAST finds missing guards but can't reason about autonomy scope |
-| ASI04 | Supply Chain / Untrusted Code | `command_injection` | Covered (TS-SV-003, TS-RW-012, TS-RW-018, PY-RW-007) | Medium-High -- plugin loading without verification |
-| ASI05 | Insufficient Access Controls | `auth_bypass`, `authz_bypass` | Strong -- 9+ OpenClaw real-world cases | Medium -- missing auth checks on endpoints |
-| ASI06 | Memory Poisoning | `command_injection` | Covered (PY-SV-004, planned) | Medium -- poisoned retrieval reaching execution sinks |
-| ASI07 | Insecure Multi-Agent Communication | `auth_bypass` | Covered (RS-SV-004, planned) | Medium -- missing authentication on inter-agent endpoints |
-| ASI08 | Inadequate Error Handling | Not in scope | Not covered | Low -- error handling quality is not a taint-flow problem |
-| ASI09 | Insufficient Logging | Not in scope | Not covered | Very low -- operational concern, not static analysis |
-| ASI10 | Resource Exhaustion / DoS | Not in scope | Not covered | Low -- resource limits are runtime policy |
+| ASI ID | OWASP Category | SASTbench Focus | Coverage | SAST Suitability |
+|--------|----------------|-----------------|----------|------------------|
+| ASI01 | Agent Goal Hijack | `command_injection` | Targeted coverage | Medium -- SAST can often trace goal-carrying prompt/context data into powerful sinks, but it cannot fully reason about agent intent. |
+| ASI02 | Tool Misuse & Exploitation | `ssrf`, `path_traversal`, selected `command_injection` secondaries | Strong coverage | High -- this is the benchmark's best static-analysis fit because it reduces cleanly to taint and guard validation at tool boundaries. |
+| ASI03 | Identity & Privilege Abuse | `auth_bypass`, `authz_bypass`, approval/scope binding flaws | Strong coverage | Medium-High -- missing auth, scope binding, and privilege inheritance checks usually leave static evidence. |
+| ASI04 | Agentic Supply Chain Vulnerabilities | plugin and package install/load surfaces | Targeted coverage | Medium-High -- SAST can often spot untrusted plugin installation, discovery, or execution paths, especially when integrity checks are absent. |
+| ASI05 | Unexpected Code Execution | `command_injection` | Strong coverage | High -- direct shell execution, eval, and RCE-style sinks are highly benchmarkable with region-level scoring. |
+| ASI06 | Memory & Context Poisoning | `command_injection` via poisoned memory/context | Targeted coverage | Medium -- static analysis can detect the final sink path, but persistent memory poisoning is broader than code alone. |
+| ASI07 | Insecure Inter-Agent Communication | `auth_bypass`, cross-agent sandbox inheritance | Targeted coverage | Medium -- SAST can catch missing authentication and broken trust-boundary checks between agents, but not all protocol-level guarantees. |
+| ASI08 | Cascading Failures | Not in scope | Not covered | Low -- system-wide propagation and blast radius are emergent runtime properties, not stable file-local findings. |
+| ASI09 | Human-Agent Trust Exploitation | Not in scope | Not covered | Very low -- this category depends on human approval behavior, misleading UX, and social proof, not just source code structure. |
+| ASI10 | Rogue Agents | Not in scope | Not covered | Very low -- long-horizon misalignment, concealment, and self-directed behavior require runtime evaluation rather than region-scored SAST. |
 
 ## Per-ASI Case Lists
 
-### ASI01 -- Prompt Injection / Agent Goal Hijack
+### ASI01 -- Agent Goal Hijack
 
-Cases where untrusted prompt data reaches a high-power tool sink.
+Cases where attacker-controlled prompt or context data changes the agent's objective or tool plan.
 
 | Case ID | Kind | Track | Role |
 |---------|------|-------|------|
 | SB-PY-SV-003 | `command_injection` | Core | Primary |
-| SB-TS-SV-001 | `command_injection` | Core | Secondary |
-| SB-TS-SV-002 | `ssrf` | Core | Secondary |
-| SB-RS-SV-002 | `command_injection` | Core | Secondary |
 | SB-PY-SV-001 | `ssrf` | Core | Secondary |
+| SB-TS-SV-002 | `ssrf` | Core | Secondary |
 
-### ASI02 -- Improper Output Handling
+### ASI02 -- Tool Misuse & Exploitation
 
-Cases where LLM or tool output flows to a dangerous sink without sanitization.  This is the broadest category and SASTbench's strongest coverage area.
+Cases where an agent misuses a legitimate tool boundary such as HTTP, filesystem, or shell execution wrappers.
 
 | Case ID | Kind | Track | Role |
 |---------|------|-------|------|
-| SB-PY-SV-001 | `ssrf` | Core | Primary |
-| SB-PY-SV-002 | `path_traversal` | Core | Primary |
-| SB-PY-SV-003 | `command_injection` | Core | Secondary |
-| SB-TS-SV-001 | `command_injection` | Core | Primary |
-| SB-TS-SV-002 | `ssrf` | Core | Primary |
-| SB-TS-SV-003 | `command_injection` | Core | Secondary |
-| SB-RS-SV-001 | `path_traversal` | Core | Primary |
-| SB-RS-SV-002 | `command_injection` | Core | Primary |
-| SB-RS-SV-003 | `path_traversal` | Core | Primary |
-| SB-TS-MI-001 | `ssrf` | Core | Secondary |
-| SB-RS-MI-001 | `command_injection` | Core | Secondary |
-| SB-PY-MI-001 | `ssrf` | Core | Secondary |
+| SB-PY-MI-001 | `ssrf` | Core | Primary |
 | SB-PY-RW-001 | `ssrf` | Full | Primary |
 | SB-PY-RW-002 | `ssrf` | Full | Primary |
 | SB-PY-RW-003 | `ssrf` | Full | Primary |
 | SB-PY-RW-004 | `ssrf` | Full | Primary |
 | SB-PY-RW-005 | `ssrf` | Full | Primary |
-| SB-RS-RW-001 | `path_traversal` | Full | Primary |
-| SB-TS-RW-001 | `command_injection` | Full | Primary |
-| SB-TS-RW-002 | `command_injection` | Full | Primary |
-| SB-TS-RW-005 | `command_injection` | Full | Primary |
-| SB-TS-RW-006 | `path_traversal` | Full | Primary |
-| SB-TS-RW-007 | `command_injection` | Full | Primary |
-| SB-TS-RW-008 | `path_traversal` | Full | Primary |
-| SB-TS-RW-011 | `command_injection` | Full | Primary |
-| SB-TS-RW-014 | `ssrf` | Full | Primary |
 | SB-PY-RW-006 | `path_traversal` | Full | Primary |
-| SB-PY-RW-007 | `command_injection` | Full | Secondary |
-
-### ASI03 -- Excessive Agency
-
-Cases where an agent has more capability than needed, or where the benchmark tests the boundary between safe capability use and unsafe over-reach.
-
-| Case ID | Kind | Track | Role |
-|---------|------|-------|------|
-| SB-PY-CS-001 | `command_injection` | Core | Primary |
-| SB-TS-CS-001 | `ssrf` | Core | Primary |
+| SB-PY-SV-001 | `ssrf` | Core | Primary |
+| SB-PY-SV-002 | `path_traversal` | Core | Primary |
 | SB-RS-CS-001 | `path_traversal` | Core | Primary |
-| SB-PY-MI-001 | `ssrf` | Core | Primary |
+| SB-RS-SV-001 | `path_traversal` | Core | Primary |
+| SB-RS-SV-003 | `path_traversal` | Core | Primary |
+| SB-TS-CS-001 | `ssrf` | Core | Primary |
 | SB-TS-MI-001 | `ssrf` | Core | Primary |
-| SB-RS-MI-001 | `command_injection` | Core | Primary |
-| SB-PY-SV-002 | `path_traversal` | Core | Secondary |
-| SB-RS-SV-001 | `path_traversal` | Core | Secondary |
-| SB-RS-SV-003 | `path_traversal` | Core | Secondary |
-| SB-PY-RW-001 | `ssrf` | Full | Secondary |
+| SB-TS-RW-008 | `path_traversal` | Full | Primary |
+| SB-TS-RW-014 | `ssrf` | Full | Primary |
+| SB-TS-SV-002 | `ssrf` | Core | Primary |
+| SB-PY-RW-007 | `command_injection` | Full | Secondary |
+| SB-RS-MI-001 | `command_injection` | Core | Secondary |
+| SB-RS-RW-001 | `path_traversal` | Full | Secondary |
+| SB-RS-SV-002 | `command_injection` | Core | Secondary |
+| SB-TS-RW-002 | `command_injection` | Full | Secondary |
+| SB-TS-RW-005 | `command_injection` | Full | Secondary |
+| SB-TS-RW-012 | `path_traversal` | Full | Secondary |
+| SB-TS-SV-001 | `command_injection` | Core | Secondary |
 
-### ASI04 -- Supply Chain / Untrusted Code
+### ASI03 -- Identity & Privilege Abuse
 
-Cases where untrusted code from plugins, packages, or registries is loaded without verification.
-
-| Case ID | Kind | Track | Role |
-|---------|------|-------|------|
-| SB-TS-SV-003 | `command_injection` | Core | Primary |
-| SB-TS-RW-012 | `path_traversal` | Full | Primary |
-| SB-TS-RW-018 | `command_injection` | Full | Primary |
-| SB-PY-RW-007 | `command_injection` | Full | Primary |
-
-### ASI05 -- Insufficient Access Controls
-
-Cases where authentication or authorization checks are missing or bypassable.
+Cases where authentication, authorization, approval binding, or sandbox scope checks are missing or bypassable.
 
 | Case ID | Kind | Track | Role |
 |---------|------|-------|------|
+| SB-RS-RW-001 | `path_traversal` | Full | Primary |
 | SB-TS-RW-003 | `auth_bypass` | Full | Primary |
 | SB-TS-RW-004 | `auth_bypass` | Full | Primary |
+| SB-TS-RW-007 | `command_injection` | Full | Primary |
 | SB-TS-RW-009 | `authz_bypass` | Full | Primary |
 | SB-TS-RW-010 | `authz_bypass` | Full | Primary |
+| SB-TS-RW-011 | `command_injection` | Full | Primary |
 | SB-TS-RW-013 | `auth_bypass` | Full | Primary |
 | SB-TS-RW-015 | `auth_bypass` | Full | Primary |
 | SB-TS-RW-016 | `authz_bypass` | Full | Primary |
 | SB-TS-RW-017 | `authz_bypass` | Full | Primary |
 | SB-TS-RW-019 | `authz_bypass` | Full | Primary |
+| SB-RS-SV-004 | `auth_bypass` | Core | Secondary |
+| SB-TS-RW-001 | `command_injection` | Full | Secondary |
+| SB-TS-RW-006 | `path_traversal` | Full | Secondary |
 
-### ASI06 -- Memory Poisoning
+### ASI04 -- Agentic Supply Chain Vulnerabilities
 
-Cases where poisoned retrieval data reaches an execution sink.
+Cases where agents load or install code, plugins, or packages from untrusted registries, repositories, or workspace roots.
 
-No cases are shipped yet.  PY-SV-004 is planned to cover this category by modeling a RAG pipeline where poisoned embeddings reach a code-execution tool.
+| Case ID | Kind | Track | Role |
+|---------|------|-------|------|
+| SB-TS-RW-012 | `path_traversal` | Full | Primary |
+| SB-TS-RW-018 | `command_injection` | Full | Primary |
+| SB-TS-SV-003 | `command_injection` | Core | Primary |
 
-### ASI07 -- Insecure Multi-Agent Communication
+### ASI05 -- Unexpected Code Execution
 
-Cases where inter-agent endpoints lack authentication.
+Cases where attacker-controlled data reaches a shell, eval, or equivalent code-execution sink.
 
-No cases are shipped yet.  RS-SV-004 is planned to cover this category by modeling an unauthenticated inter-agent RPC surface.
+| Case ID | Kind | Track | Role |
+|---------|------|-------|------|
+| SB-PY-CS-001 | `command_injection` | Core | Primary |
+| SB-PY-RW-007 | `command_injection` | Full | Primary |
+| SB-RS-MI-001 | `command_injection` | Core | Primary |
+| SB-RS-SV-002 | `command_injection` | Core | Primary |
+| SB-TS-RW-001 | `command_injection` | Full | Primary |
+| SB-TS-RW-002 | `command_injection` | Full | Primary |
+| SB-TS-RW-005 | `command_injection` | Full | Primary |
+| SB-TS-SV-001 | `command_injection` | Core | Primary |
+| SB-PY-SV-003 | `command_injection` | Core | Secondary |
+| SB-PY-SV-004 | `command_injection` | Core | Secondary |
+| SB-TS-RW-007 | `command_injection` | Full | Secondary |
+| SB-TS-RW-011 | `command_injection` | Full | Secondary |
+| SB-TS-RW-018 | `command_injection` | Full | Secondary |
+| SB-TS-SV-003 | `command_injection` | Core | Secondary |
 
-### ASI08 -- Inadequate Error Handling
+### ASI06 -- Memory & Context Poisoning
 
-Not in scope.
+Cases where poisoned memory, retrieval, or context state later drives unsafe execution.
 
-### ASI09 -- Insufficient Logging
+| Case ID | Kind | Track | Role |
+|---------|------|-------|------|
+| SB-PY-SV-004 | `command_injection` | Core | Primary |
 
-Not in scope.
+### ASI07 -- Insecure Inter-Agent Communication
 
-### ASI10 -- Resource Exhaustion / DoS
+Cases where agent-to-agent channels or subagent hops are trusted without sufficient authentication or confinement.
 
-Not in scope.
+| Case ID | Kind | Track | Role |
+|---------|------|-------|------|
+| SB-RS-SV-004 | `auth_bypass` | Core | Primary |
+| SB-TS-RW-006 | `path_traversal` | Full | Primary |
+
+### ASI08 -- Cascading Failures
+
+System-level failure amplification across chained agents, services, or automations.
+
+No cases are currently mapped to this category.
+
+### ASI09 -- Human-Agent Trust Exploitation
+
+Cases where agents exploit human trust, approvals, or operator expectations.
+
+No cases are currently mapped to this category.
+
+### ASI10 -- Rogue Agents
+
+Cases where agents act beyond intended goals or controls over time.
+
+No cases are currently mapped to this category.
 
 ## Why ASI08-ASI10 Are Out of Scope
 
-SASTbench is a static analysis benchmark.  Its scoring is built around taint-flow detection and region-level finding overlap.  Three ASI categories fall outside that model:
+SASTbench is a static analysis benchmark. Its scoring is built around region-level matching of concrete source-code findings. Three OWASP categories remain intentionally out of scope for that model:
 
-- **ASI08 (Inadequate Error Handling)**: Error handling quality is a code quality concern, not a taint-flow problem.  SAST tools do not typically produce findings for "insufficient error handling," and there is no meaningful way to annotate a vulnerable region or measure recall for this category.
+- **ASI08 (Cascading Failures)**: This category is about system-wide propagation, chained automation effects, and blast radius across components. Those effects are emergent runtime behaviors rather than stable file-local vulnerabilities.
 
-- **ASI09 (Insufficient Logging)**: Logging adequacy is an operational and compliance concern.  It requires runtime context (what was logged, where, in what format) that static analysis cannot observe.  Including it would dilute the benchmark's focus without producing useful scanner differentiation.
+- **ASI09 (Human-Agent Trust Exploitation)**: This category depends on human approvals, misleading interfaces, confidence cues, and operator behavior. It is important, but it is not something a SAST benchmark can score reliably from annotated code regions alone.
 
-- **ASI10 (Resource Exhaustion / DoS)**: Resource limits are runtime policy.  Whether an agent can be exhausted depends on deployment configuration (timeouts, rate limits, memory caps), not on source code patterns that SAST can reliably flag.  A benchmark case for DoS would not produce consistent, reproducible scores across scanners.
+- **ASI10 (Rogue Agents)**: This category is about long-horizon autonomy, concealment, and behavior that drifts beyond intended goals. That requires runtime evaluation, adversarial simulation, or longitudinal testing rather than static code scanning.
 
-These three categories are valuable for agentic security programs but belong in runtime testing, observability audits, or operational checklists rather than in a static analysis benchmark.
+These categories are valuable for agentic security programs, but they belong in runtime exercises, red teaming, behavioral evaluation, or operational governance rather than in SASTbench's current scoring model.
 
 ## Relationship Between SASTbench Scoring and the OWASP Mapping
 
@@ -158,9 +173,9 @@ SASTbench uses its own 5-kind canonical taxonomy for scoring:
 - `auth_bypass`
 - `authz_bypass`
 
-The official metrics (Recall, Capability FP Rate, Mixed-Intent Accuracy, Agentic Score) are computed entirely from this taxonomy.  A finding is scored based on whether the adapter maps it to the correct canonical kind and whether it overlaps the correct annotated region.
+The official metrics (Recall, Capability FP Rate, Mixed-Intent Accuracy, Agentic Score) are computed entirely from this taxonomy. A finding is scored based on whether the adapter maps it to the correct canonical kind and whether it overlaps the correct annotated region.
 
-The OWASP mapping is **metadata** stored in each case's `standards.owaspAgenticTop10` field.  It enables:
+The OWASP mapping is **metadata** stored in each case's `standards.owaspAgenticTop10` field. It enables:
 
 - Filtering results by ASI category in reports
 - Aggregating coverage statistics by OWASP category for compliance narratives

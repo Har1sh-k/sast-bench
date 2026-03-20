@@ -18,16 +18,20 @@
       "endLine": 65,
       "label": "capability_safe",
       "capability": "network",
-      "requiredGuards": ["host_allowlist"]
+      "requiredGuards": [
+        "host_allowlist"
+      ]
     }
   ],
   "expectedOutcome": {
     "mustDetectRegionIds": [],
-    "mustNotFlagRegionIds": ["R1"]
+    "mustNotFlagRegionIds": [
+      "R1"
+    ]
   },
   "standards": {
     "owaspAgenticTop10": {
-      "primary": "ASI03"
+      "primary": "ASI02"
     }
   }
 }

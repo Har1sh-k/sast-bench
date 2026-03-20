@@ -18,7 +18,9 @@
       "endLine": 48,
       "label": "capability_safe",
       "capability": "code_execution",
-      "requiredGuards": ["allowlist"]
+      "requiredGuards": [
+        "allowlist"
+      ]
     },
     {
       "id": "R2",
@@ -27,17 +29,25 @@
       "endLine": 46,
       "label": "vulnerable",
       "capability": "code_execution",
-      "acceptedKinds": ["command_injection"]
+      "acceptedKinds": [
+        "command_injection"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R2"],
-    "mustNotFlagRegionIds": ["R1"]
+    "mustDetectRegionIds": [
+      "R2"
+    ],
+    "mustNotFlagRegionIds": [
+      "R1"
+    ]
   },
   "standards": {
     "owaspAgenticTop10": {
-      "primary": "ASI03",
-      "secondary": ["ASI02"]
+      "primary": "ASI05",
+      "secondary": [
+        "ASI02"
+      ]
     }
   }
 }

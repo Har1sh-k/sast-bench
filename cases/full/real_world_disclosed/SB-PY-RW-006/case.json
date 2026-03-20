@@ -18,7 +18,9 @@
       "endLine": 270,
       "label": "vulnerable",
       "capability": "filesystem",
-      "acceptedKinds": ["path_traversal"]
+      "acceptedKinds": [
+        "path_traversal"
+      ]
     },
     {
       "id": "R2",
@@ -27,11 +29,15 @@
       "endLine": 347,
       "label": "vulnerable",
       "capability": "filesystem",
-      "acceptedKinds": ["path_traversal"]
+      "acceptedKinds": [
+        "path_traversal"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R1"],
+    "mustDetectRegionIds": [
+      "R1"
+    ],
     "mustNotFlagRegionIds": []
   },
   "realWorld": {

@@ -18,17 +18,23 @@
       "endLine": 55,
       "label": "vulnerable",
       "capability": "network",
-      "acceptedKinds": ["ssrf"]
+      "acceptedKinds": [
+        "ssrf"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R1"],
+    "mustDetectRegionIds": [
+      "R1"
+    ],
     "mustNotFlagRegionIds": []
   },
   "standards": {
     "owaspAgenticTop10": {
       "primary": "ASI02",
-      "secondary": ["ASI01"]
+      "secondary": [
+        "ASI01"
+      ]
     }
   }
 }

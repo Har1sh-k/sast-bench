@@ -18,11 +18,15 @@
       "endLine": 428,
       "label": "vulnerable",
       "capability": "code_execution",
-      "acceptedKinds": ["command_injection"]
+      "acceptedKinds": [
+        "command_injection"
+      ]
     }
   ],
   "expectedOutcome": {
-    "mustDetectRegionIds": ["R1"],
+    "mustDetectRegionIds": [
+      "R1"
+    ],
     "mustNotFlagRegionIds": []
   },
   "realWorld": {
@@ -34,8 +38,10 @@
   },
   "standards": {
     "owaspAgenticTop10": {
-      "primary": "ASI02",
-      "secondary": ["ASI05"]
+      "primary": "ASI03",
+      "secondary": [
+        "ASI05"
+      ]
     }
   }
 }

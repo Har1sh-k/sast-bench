@@ -745,9 +745,9 @@ This design means:
 
 ### Coverage profile
 
-SASTbench covers ASI01 (Prompt Injection) through ASI07 (Insecure Multi-Agent Communication) with varying depth.  ASI02 (Improper Output Handling) has the strongest coverage because taint flow from LLM output to dangerous sinks is the benchmark's core testing pattern.
+SASTbench currently has strong OWASP crosswalk coverage for ASI02 (Tool Misuse & Exploitation), ASI03 (Identity & Privilege Abuse), and ASI05 (Unexpected Code Execution).  It also ships targeted cases for ASI01 (Agent Goal Hijack), ASI04 (Agentic Supply Chain Vulnerabilities), ASI06 (Memory & Context Poisoning), and ASI07 (Insecure Inter-Agent Communication).
 
-ASI08 (Inadequate Error Handling), ASI09 (Insufficient Logging), and ASI10 (Resource Exhaustion) are out of scope.  These categories describe operational qualities that static analysis cannot reliably benchmark: error-handling completeness is a code-quality concern, logging adequacy is an observability concern, and resource exhaustion is a runtime-policy concern.
+ASI08 (Cascading Failures), ASI09 (Human-Agent Trust Exploitation), and ASI10 (Rogue Agents) are out of scope for the current benchmark model.  These categories depend on system-level runtime propagation, human approvals and trust signals, or long-horizon autonomous behavior rather than concrete region-level source findings that static analysis can score reproducibly.
 
 The full mapping table and per-ASI case lists are maintained in `docs/OWASP_AGENTIC_TOP10_MAPPING.md`.
 
