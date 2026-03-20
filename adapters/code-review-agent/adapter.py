@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+ADAPTER_VERSION = "1.1.0"
+
 CODE_REVIEW_AGENT_DIR = Path(os.environ.get(
     "CODE_REVIEW_AGENT_DIR",
     r"D:\GIT\git repos\agent-security-scanner-mcp\code-review-agent",
@@ -72,6 +74,21 @@ TITLE_PATTERN_MAP = {
     "missing authorization": "authz_bypass",
 }
 
+GENERIC_REVIEW_CATEGORIES = {
+    "logic-bug",
+    "unhandled-exception",
+}
+
+CARRIER_TITLE_PATTERNS = (
+    "passed to",
+    "passed directly to",
+    "forwarded to",
+    "flows into",
+    "reaches",
+    "at system boundary",
+    "agent pipeline",
+)
+
 
 def get_version() -> str:
     """Get the code-review-agent version string."""
@@ -84,20 +101,28 @@ def get_version() -> str:
         return "unknown"
 
 
+def _map_from_title(title: str) -> str:
+    """Map a finding title to a canonical kind."""
+    title_lower = title.lower()
+    for pattern, kind in TITLE_PATTERN_MAP.items():
+        if pattern in title_lower:
+            return kind
+    return "unmapped"
+
+
 def _map_finding(finding: dict) -> str:
-    """Map a finding to a canonical kind using CWE and title patterns."""
+    """Map a finding to a canonical kind using CWE and explicit title text.
+
+    Deliberately avoid mapping from free-form reasoning when the CWE is not in
+    the supported benchmark set. That keeps broad code-review commentary from
+    turning into synthetic benchmark findings.
+    """
     # Try CWE first
     cwe = finding.get("cwe", "")
     if cwe and cwe in CWE_KIND_MAP:
         return CWE_KIND_MAP[cwe]
 
-    # Pattern match on title + reasoning
-    text = f"{finding.get('title', '')} {finding.get('reasoning', '')}".lower()
-    for pattern, kind in TITLE_PATTERN_MAP.items():
-        if pattern in text:
-            return kind
-
-    return "unmapped"
+    return _map_from_title(finding.get("title", ""))
 
 
 def _build_env() -> dict[str, str]:
@@ -107,6 +132,61 @@ def _build_env() -> dict[str, str]:
         sep = ";" if sys.platform == "win32" else ":"
         env["PATH"] = _FNM_NODE_DIR + sep + env.get("PATH", "")
     return env
+
+
+def _should_keep_finding(finding: dict, mapped_kind: str) -> bool:
+    """Keep only benchmark-relevant security findings."""
+    category = str(finding.get("category", "")).strip().lower()
+    if category in GENERIC_REVIEW_CATEGORIES:
+        return False
+    if mapped_kind == "unmapped":
+        return False
+
+    cwe = str(finding.get("cwe", "")).strip()
+    title_kind = _map_from_title(finding.get("title", ""))
+
+    # Findings with benchmark-supported CWEs are trusted. Everything else needs
+    # an explicit title match instead of free-form reasoning.
+    if cwe:
+        return cwe in CWE_KIND_MAP or title_kind == mapped_kind
+
+    return title_kind == mapped_kind
+
+
+def _is_carrier_finding(finding: dict) -> bool:
+    """Detect path-localized flow/carrier findings when a sink is preferable."""
+    path = finding["path"].replace("\\", "/").strip("/")
+    filename = Path(path).name.lower()
+    path_is_carrier = (
+        path.startswith("agent/")
+        or path.startswith("app/")
+        or filename in {"router.py", "planner.py", "main.py"}
+    )
+    title = finding["message"].lower()
+    title_is_carrier = any(pattern in title for pattern in CARRIER_TITLE_PATTERNS)
+    return path_is_carrier and title_is_carrier
+
+
+def _suppress_carrier_duplicates(findings: list[dict]) -> list[dict]:
+    """Drop duplicate carrier findings when the same issue is localized to a sink."""
+    kept = []
+    for finding in findings:
+        if not _is_carrier_finding(finding):
+            kept.append(finding)
+            continue
+
+        has_sink_localized_peer = any(
+            other is not finding
+            and other["mappedKind"] == finding["mappedKind"]
+            and other.get("_cwe", "") == finding.get("_cwe", "")
+            and other["path"] != finding["path"]
+            and not _is_carrier_finding(other)
+        for other in findings)
+
+        if not has_sink_localized_peer:
+            kept.append(finding)
+
+    return kept
 
 
 def scan(scan_root: Path, language: str) -> list[dict]:
@@ -172,6 +252,9 @@ def scan(scan_root: Path, language: str) -> list[dict]:
         rel_path = rel_path.lstrip("./")
 
         mapped_kind = _map_finding(f)
+        if not _should_keep_finding(f, mapped_kind):
+            continue
+
         cwe = f.get("cwe", "")
         category = f.get("category", "")
 
@@ -183,6 +266,13 @@ def scan(scan_root: Path, language: str) -> list[dict]:
             "endLine": location.get("endLine", location.get("startLine", 1)),
             "severity": f.get("severity", "medium"),
             "message": f.get("title", ""),
+            "_cwe": cwe,
         })
+
+    findings = _suppress_carrier_duplicates(findings)
+
+    # Remove internal fields before returning benchmark findings.
+    for finding in findings:
+        finding.pop("_cwe", None)
 
     return findings

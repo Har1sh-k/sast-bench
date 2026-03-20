@@ -87,12 +87,16 @@ V1 uses a small canonical taxonomy. Adapters map tool-specific rules into these 
 - `command_injection`
 - `path_traversal`
 - `ssrf`
+- `auth_bypass`
+- `authz_bypass`
 
-These three are enough to stress the main agentic capability surfaces:
+These five are enough to stress the main agentic capability surfaces:
 
 - executing commands
 - reading and writing files
 - making outbound network requests
+- authenticating callers and connections
+- enforcing per-identity permission scopes
 
 V1 will not score by CWE alone. CWE data may be stored for reporting, but official matching uses canonical kinds plus region overlap.
 
@@ -652,7 +656,7 @@ Allow vendor and community submissions only if they are reproducible from raw ou
 `v1.0.0` should include:
 
 - frozen schema
-- canonical taxonomy for the 3 V1 kinds
+- canonical taxonomy for the 5 V1 kinds
 - at least 15 official cases
 - Core Track in Python, TypeScript, and Rust
 - Full Track with the strongest qualifying public cases, with no hard cap on qualified real-world additions
@@ -723,6 +727,29 @@ V2 expands depth without diluting the benchmark identity.
 - adapter conformance suite
 - scanner comparison mode in the report
 - submission documentation and leaderboard policy
+
+## 23. OWASP Agentic Top 10 Alignment
+
+SASTbench maps its cases to the OWASP Top 10 for Agentic Security (ASI01 through ASI10) as a **reporting crosswalk**.  The decision is deliberate: the OWASP categories provide a shared industry vocabulary for risk communication, but they are too broad and overlapping to use as a scoring taxonomy for a static analysis benchmark.
+
+### Design decision
+
+SASTbench retains its own 5-kind canonical taxonomy (`command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`) for all scoring.  The OWASP mapping is metadata stored in each case's `standards.owaspAgenticTop10` field, carrying a `primary` ASI category and optional `secondary` categories.
+
+This design means:
+
+- Adapters do not need to emit ASI labels.  They continue mapping tool rules to canonical kinds.
+- Scoring (Recall, Capability FP Rate, Mixed-Intent Accuracy, Agentic Score) is computed entirely from canonical kinds and region overlap.
+- Reports can aggregate results by ASI category for compliance-oriented audiences without changing the underlying scoring.
+- The benchmark can adopt future OWASP revisions by updating case metadata without re-scoring past results.
+
+### Coverage profile
+
+SASTbench covers ASI01 (Prompt Injection) through ASI07 (Insecure Multi-Agent Communication) with varying depth.  ASI02 (Improper Output Handling) has the strongest coverage because taint flow from LLM output to dangerous sinks is the benchmark's core testing pattern.
+
+ASI08 (Inadequate Error Handling), ASI09 (Insufficient Logging), and ASI10 (Resource Exhaustion) are out of scope.  These categories describe operational qualities that static analysis cannot reliably benchmark: error-handling completeness is a code-quality concern, logging adequacy is an observability concern, and resource exhaustion is a runtime-policy concern.
+
+The full mapping table and per-ASI case lists are maintained in `docs/OWASP_AGENTIC_TOP10_MAPPING.md`.
 
 ## 22. Final Positioning
 
