@@ -210,6 +210,8 @@ def scan(scan_root: Path, language: str) -> list[dict]:
             stdout=subprocess.PIPE,
             stderr=None,  # stream stderr to terminal
             text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=str(CODE_REVIEW_AGENT_DIR),
             env=env,
         )

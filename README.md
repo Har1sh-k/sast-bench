@@ -7,14 +7,53 @@ SASTbench evaluates whether static analyzers can detect real vulnerabilities in 
 ## Quick Start
 
 ```bash
+# Install the harness plus pytest
+python -m pip install -e ".[dev]"
+
+# Optional: install the official baseline scanners
+python -m pip install -e ".[official-adapters]"
+
 # Run benchmark against a scanner
 python scripts/run.py --scanner semgrep --track core
 
-# Validate case definitions
+# Validate case definitions (Core Track by default)
 python scripts/validate.py
 
 # Generate report
 python scripts/report.py results/<results-file>.json
+```
+
+## Setup
+
+### Requirements
+
+- Python 3.11+
+- Git (required for `scripts/setup_repos.py`)
+
+The benchmark harness itself only uses the Python standard library. Scanner CLIs are optional and can be installed separately or via the `official-adapters` extra.
+
+### Full Track Snapshots
+
+Full Track cases reference pinned snapshots under `.repos/`. Populate them with:
+
+```bash
+python scripts/setup_repos.py
+```
+
+If a previous clone was interrupted and left behind a `.git` directory without checked-out files, rerunning `python scripts/setup_repos.py` repairs that snapshot.
+
+After setup, validate the full benchmark surface with:
+
+```bash
+python scripts/validate.py --track full
+```
+
+### Tests
+
+Run benchmark self-tests from the repo root with:
+
+```bash
+python -m pytest -q
 ```
 
 ## Tracks
@@ -66,6 +105,8 @@ See [docs/OWASP_AGENTIC_TOP10_MAPPING.md](docs/OWASP_AGENTIC_TOP10_MAPPING.md) f
 ```text
 sastbench/
 |- manifest.json
+|- LICENSE
+|- pyproject.toml
 |- schema/            # JSON schemas for cases and results
 |- taxonomy/          # Canonical kinds, capabilities, languages
 |- cases/
@@ -78,4 +119,4 @@ sastbench/
 
 ## License
 
-TBD
+MIT
