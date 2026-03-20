@@ -16,11 +16,17 @@ python -m pip install -e ".[official-adapters]"
 # Run benchmark against a scanner
 python scripts/run.py --scanner semgrep --track core
 
+# Run with per-finding audit trail
+python scripts/run.py --scanner semgrep --track core --verbose
+
 # Validate case definitions (Core Track by default)
 python scripts/validate.py
 
-# Generate report
+# Generate summary report
 python scripts/report.py results/<results-file>.json
+
+# Generate deep report with per-finding detail
+python scripts/report.py results/<results-file>.json --verbose
 ```
 
 ## Setup

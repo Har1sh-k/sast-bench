@@ -220,19 +220,22 @@ def render_finding_card(finding: dict) -> str:
 def render_case_deep_section(case_result: dict) -> str:
     """Render a collapsible deep-detail section for one case."""
     findings = case_result.get("findings", [])
-    if not findings:
-        return ""
-
     case_id = html.escape(case_result["caseId"])
     tp = case_result["scoring"]["truePositives"]
+    fn = case_result["scoring"]["falseNegatives"]
     fp = case_result["scoring"]["falsePositives"]
     cap_fp = case_result["scoring"]["capabilityFalsePositives"]
 
-    cards = "\n".join(render_finding_card(f) for f in findings)
+    if findings:
+        cards = "\n".join(render_finding_card(f) for f in findings)
+    else:
+        cards = '<div class="finding"><em>No findings from scanner.</em></div>'
+
     return (
         f'<details>'
         f'<summary>{case_id} -- {len(findings)} findings '
         f'(<span class="tp">{tp} TP</span>, '
+        f'<span class="fn">{fn} FN</span>, '
         f'<span class="fp">{fp} FP</span>, '
         f'<span class="cap-fp">{cap_fp} CapFP</span>)</summary>'
         f'{cards}'
@@ -304,11 +307,7 @@ def generate_report(results: dict, results_dir: Path, output_dir: Path, deep: bo
         deep_parts.append("<h2>Finding-Level Audit Trail</h2>")
         deep_parts.append("<p>Expand a case to see every finding with its classification.</p>")
         for cr in results["caseResults"]:
-            section = render_case_deep_section(cr)
-            if section:
-                deep_parts.append(section)
-        if not any(cr["findings"] for cr in results["caseResults"]):
-            deep_parts.append("<p><em>No findings to display.</em></p>")
+            deep_parts.append(render_case_deep_section(cr))
         deep_html = "\n".join(deep_parts)
 
     html_output = HTML_TEMPLATE.format(

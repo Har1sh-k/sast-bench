@@ -95,7 +95,8 @@ def _case_outcome(scoring, skip_reason: str | None) -> str:
     if scoring.true_positives > 0:
         noise = scoring.false_positives + scoring.capability_false_positives
         return "HIT" if noise == 0 else "HIT (noisy)"
-    return "CLEAN" if scoring.false_positives == 0 else "NOISY"
+    noise = scoring.false_positives + scoring.capability_false_positives
+    return "CLEAN" if noise == 0 else "NOISY"
 
 
 def _format_default_status(scoring, skip_reason: str | None) -> str:
