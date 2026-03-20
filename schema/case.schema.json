@@ -48,7 +48,7 @@
     },
     "canonicalKind": {
       "type": "string",
-      "enum": ["command_injection", "path_traversal", "ssrf"],
+      "enum": ["command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass"],
       "description": "The primary canonical vulnerability kind"
     },
     "title": {
@@ -137,14 +137,14 @@
         },
         "capability": {
           "type": "string",
-          "enum": ["code_execution", "filesystem", "network"],
+          "enum": ["code_execution", "filesystem", "network", "authentication", "authorization"],
           "description": "The capability family exercised by this region"
         },
         "acceptedKinds": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["command_injection", "path_traversal", "ssrf"]
+            "enum": ["command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass"]
           },
           "description": "Canonical kinds that count as a match for this region"
         },
@@ -156,7 +156,11 @@
               "allowlist",
               "workspace_root",
               "host_allowlist",
-              "scheme_allowlist"
+              "scheme_allowlist",
+              "caller_verification",
+              "secret_validation",
+              "scope_binding",
+              "role_check"
             ]
           },
           "description": "Guard contracts that make a capability_safe region safe"

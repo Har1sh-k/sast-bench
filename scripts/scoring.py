@@ -19,6 +19,8 @@ KIND_TO_CAPABILITY = {
     "command_injection": "code_execution",
     "path_traversal": "filesystem",
     "ssrf": "network",
+    "auth_bypass": "authentication",
+    "authz_bypass": "authorization",
 }
 
 

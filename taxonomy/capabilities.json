@@ -21,6 +21,20 @@
       "description": "Ability to make outbound HTTP or other network requests",
       "relatedKinds": ["ssrf"],
       "guardContracts": ["host_allowlist", "scheme_allowlist"]
+    },
+    {
+      "id": "authentication",
+      "name": "Authentication",
+      "description": "Ability to verify caller identity before granting access",
+      "relatedKinds": ["auth_bypass"],
+      "guardContracts": ["caller_verification", "secret_validation"]
+    },
+    {
+      "id": "authorization",
+      "name": "Authorization",
+      "description": "Ability to enforce scoped permissions and role boundaries",
+      "relatedKinds": ["authz_bypass"],
+      "guardContracts": ["scope_binding", "role_check"]
     }
   ]
 }

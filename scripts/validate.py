@@ -21,10 +21,10 @@ VALID_CASE_TYPES = {
     "real_world_disclosed",
 }
 VALID_LANGUAGES = {"python", "typescript", "rust"}
-VALID_KINDS = {"command_injection", "path_traversal", "ssrf"}
+VALID_KINDS = {"command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass"}
 VALID_LABELS = {"vulnerable", "capability_safe"}
-VALID_CAPABILITIES = {"code_execution", "filesystem", "network"}
-VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist"}
+VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization"}
+VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist", "caller_verification", "secret_validation", "scope_binding", "role_check"}
 
 
 class ValidationError:

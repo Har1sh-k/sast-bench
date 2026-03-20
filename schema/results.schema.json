@@ -138,7 +138,7 @@
         },
         "mappedKind": {
           "type": "string",
-          "enum": ["command_injection", "path_traversal", "ssrf", "unmapped"],
+          "enum": ["command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass", "unmapped"],
           "description": "Canonical kind this finding maps to"
         },
         "path": {
