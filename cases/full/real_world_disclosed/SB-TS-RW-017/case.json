@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "SB-TS-RW-017",
+  "track": "full",
+  "caseType": "real_world_disclosed",
+  "language": "typescript",
+  "canonicalKind": "authz_bypass",
+  "title": "WebSocket shared-auth connections could self-declare elevated scopes",
+  "description": "The WebSocket connection message handler's clearUnboundScopes function conditionally skips scope clearing when shared-auth is active or control-UI auth bypass is allowed. A client connecting via shared-auth without a device identity can self-declare elevated operator scopes in its connect parameters and retain them because the guard conditions prevent scope clearing for shared-auth connections.",
+  "files": {
+    "root": "../../../../.repos/openclaw_openclaw__55f47e5c/"
+  },
+  "regions": [
+    {
+      "id": "R1",
+      "path": "src/gateway/server/ws-connection/message-handler.ts",
+      "startLine": 645,
+      "endLine": 674,
+      "label": "vulnerable",
+      "capability": "authorization",
+      "acceptedKinds": ["authz_bypass"]
+    }
+  ],
+  "expectedOutcome": {
+    "mustDetectRegionIds": ["R1"],
+    "mustNotFlagRegionIds": []
+  },
+  "realWorld": {
+    "repo": "openclaw/openclaw",
+    "vulnerableCommit": "55f47e5ce658bf3bdcb3eac3a2a5b4ed4aa9f5ce",
+    "fixCommit": "5e389d5e7c9233ec91026ab2fea299ebaf3249f6",
+    "ghsa": "GHSA-rqpp-rjj8-7wv8",
+    "cve": ""
+  }
+}
