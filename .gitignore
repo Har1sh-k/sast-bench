@@ -23,3 +23,7 @@ Thumbs.db
 .repos/
 results/
 *.html
+
+# Scanner artifacts
+.securevibes/
+.claude/
