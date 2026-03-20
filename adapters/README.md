@@ -15,7 +15,9 @@ def scan(scan_root: Path, language: str) -> list[dict]:
 
     Each finding dict must have:
       - ruleId: str       - original scanner rule ID
-      - mappedKind: str   - canonical kind (command_injection, path_traversal, ssrf, unmapped)
+      - mappedKind: str   - canonical kind
+                           (command_injection, path_traversal, ssrf,
+                            auth_bypass, authz_bypass, unmapped)
       - path: str         - file path relative to scan_root
       - startLine: int    - first line of the finding
       - endLine: int      - last line of the finding
@@ -49,9 +51,8 @@ These are the only baseline adapters intended for official leaderboard runs toda
 
 ## Experimental Adapters
 
-- `xfire/`
-- `securevibes/`
 - `securevibes-agent/`
+- `code-review-agent/`
 
 Experimental adapters are useful for local comparison work, but they are not part of the official baseline until they meet the same reproducibility and path-plus-line fidelity requirements as the baseline adapters.
 

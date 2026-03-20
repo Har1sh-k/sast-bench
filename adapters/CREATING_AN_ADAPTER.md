@@ -111,15 +111,17 @@ Stored in the results JSON for reproducibility. Defaults to "1.0.0" if not set.
 
 ## Canonical kinds
 
-SASTbench V1 has exactly three canonical vulnerability kinds. Every finding must be mapped to one of these or to `"unmapped"`:
+SASTbench currently uses five canonical vulnerability kinds for scoring. Every finding must be mapped to one of these or to `"unmapped"`:
 
 | Canonical kind       | What it covers                           | Capability family |
 |----------------------|------------------------------------------|-------------------|
 | `command_injection`  | Shell injection, arbitrary code execution | `code_execution`  |
 | `path_traversal`     | Directory traversal, sandbox escape       | `filesystem`      |
 | `ssrf`               | Server-side request forgery, URL abuse    | `network`         |
+| `auth_bypass`        | Missing or broken caller authentication   | `authentication`  |
+| `authz_bypass`       | Missing or broken scope and role checks   | `authorization`   |
 
-Findings that don't map to any of these three should use `"unmapped"`. Unmapped findings are counted as false positives in scoring but don't affect the agentic-specific metrics.
+Findings that don't map to any of these five should use `"unmapped"`. Unmapped findings are counted as false positives in scoring but don't affect the agentic-specific metrics.
 
 ---
 
@@ -148,6 +150,8 @@ RULE_KIND_MAP = {
     "scanner-rule-for-open-redirect": "ssrf",
     "scanner-rule-for-path-traversal": "path_traversal",
     "scanner-rule-for-file-write": "path_traversal",
+    "scanner-rule-for-missing-auth": "auth_bypass",
+    "scanner-rule-for-missing-role-check": "authz_bypass",
 }
 ```
 
@@ -165,6 +169,10 @@ RULE_PATTERN_MAP = {
     "request-forgery": "ssrf",
     "path-traversal": "path_traversal",
     "directory-traversal": "path_traversal",
+    "missing-auth": "auth_bypass",
+    "missing-authentication": "auth_bypass",
+    "missing-authorization": "authz_bypass",
+    "missing-role-check": "authz_bypass",
 }
 ```
 
@@ -338,7 +346,7 @@ So the adapter must get three things right for scoring to work:
 - **startLine / endLine** — must overlap the region's line range
 - **mappedKind** — must match the region's `acceptedKinds`
 
-If any of these three are wrong, a correct detection will score as a false positive or miss.
+If any of these are wrong, a correct detection will score as a false positive or miss.
 
 ---
 
@@ -397,7 +405,7 @@ Before submitting an adapter:
 
 - [ ] `get_version()` returns a version string or `"unknown"`
 - [ ] `scan()` returns `list[dict]` with all required fields
-- [ ] `mappedKind` is one of: `command_injection`, `path_traversal`, `ssrf`, `unmapped`
+- [ ] `mappedKind` is one of: `command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`, `unmapped`
 - [ ] `path` is relative to scan_root with forward slashes
 - [ ] `startLine` and `endLine` are 1-indexed integers
 - [ ] Scanner-not-found returns `[]` (no crash)
