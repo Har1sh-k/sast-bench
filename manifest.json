@@ -19,7 +19,7 @@
       "casesDir": "cases/full/"
     }
   },
-  "languages": ["python", "typescript", "rust"],
+  "languages": ["python", "typescript", "rust", "swift"],
   "canonicalKinds": ["command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass", "sql_injection"],
   "schemaVersion": "1.0.0"
 }
