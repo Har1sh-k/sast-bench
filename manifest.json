@@ -4,8 +4,8 @@
   "description": "Benchmark for evaluating SAST tools on agentic codebases",
   "releaseBar": {
     "coreTrackCases": 17,
-    "fullTrackCases": 27,
-    "totalCases": 44,
+    "fullTrackCases": 40,
+    "totalCases": 57,
     "officialAdapters": 2,
     "note": "v1.0.0 requires Full Track with at least 3 real_world_disclosed cases"
   },
@@ -20,6 +20,6 @@
     }
   },
   "languages": ["python", "typescript", "rust"],
-  "canonicalKinds": ["command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass"],
+  "canonicalKinds": ["command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass", "sql_injection"],
   "schemaVersion": "1.0.0"
 }

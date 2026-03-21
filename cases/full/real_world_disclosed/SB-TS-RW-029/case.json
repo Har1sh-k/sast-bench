@@ -5,8 +5,8 @@
   "caseType": "real_world_disclosed",
   "language": "typescript",
   "canonicalKind": "sql_injection",
-  "title": "n8n SQL injection via unvalidated where-clause operators in MySQL and PostgreSQL nodes",
-  "description": "The MySQL and PostgreSQL database nodes in n8n accept where-clause parameters from workflow configuration and cast them directly to WhereClause objects without validating the condition operator. The addWhereClauses utility function then interpolates the condition field directly into SQL query strings. An attacker with workflow editing permissions can inject arbitrary SQL through the condition field of a where clause, bypassing the parameterized query protections applied to values.",
+  "title": "n8n SQL injection in MySQL, PostgreSQL, and Microsoft SQL database nodes",
+  "description": "The MySQL, PostgreSQL, and Microsoft SQL database nodes in n8n build parts of SQL queries from workflow-controlled configuration without consistently validating or safely escaping those fragments. In the vulnerable snapshot, MySQL and PostgreSQL interpolate unvalidated where-clause operators into SQL, MySQL also interpolates sort direction directly into ORDER BY, and the Microsoft SQL node concatenates unescaped identifier fields into SELECT, UPDATE, and DELETE queries. An authenticated user with workflow editing permissions can inject arbitrary SQL through crafted node configuration.",
   "files": {
     "root": "../../../../.repos/n8n-io_n8n__9ce3ac09/"
   },
@@ -24,9 +24,53 @@
     },
     {
       "id": "R2",
+      "path": "packages/nodes-base/nodes/MySql/v2/helpers/utils.ts",
+      "startLine": 538,
+      "endLine": 554,
+      "label": "vulnerable",
+      "capability": "data_store",
+      "acceptedKinds": [
+        "sql_injection"
+      ]
+    },
+    {
+      "id": "R3",
       "path": "packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts",
       "startLine": 129,
       "endLine": 188,
+      "label": "vulnerable",
+      "capability": "data_store",
+      "acceptedKinds": [
+        "sql_injection"
+      ]
+    },
+    {
+      "id": "R4",
+      "path": "packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts",
+      "startLine": 89,
+      "endLine": 93,
+      "label": "vulnerable",
+      "capability": "data_store",
+      "acceptedKinds": [
+        "sql_injection"
+      ]
+    },
+    {
+      "id": "R5",
+      "path": "packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts",
+      "startLine": 176,
+      "endLine": 200,
+      "label": "vulnerable",
+      "capability": "data_store",
+      "acceptedKinds": [
+        "sql_injection"
+      ]
+    },
+    {
+      "id": "R6",
+      "path": "packages/nodes-base/nodes/Microsoft/Sql/GenericFunctions.ts",
+      "startLine": 203,
+      "endLine": 238,
       "label": "vulnerable",
       "capability": "data_store",
       "acceptedKinds": [
@@ -37,7 +81,7 @@
   "expectedOutcome": {
     "mustDetectRegionIds": [
       "R1",
-      "R2"
+      "R3"
     ],
     "mustNotFlagRegionIds": []
   },

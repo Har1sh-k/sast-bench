@@ -8,7 +8,7 @@ SASTbench evaluates whether static analyzers can detect real vulnerabilities in 
 
 **What gets scored:**
 SASTbench measures whether a static analyzer can detect annotated vulnerable code regions (true positives) without flooding the user with false positives on nearby code.
-Scoring uses five canonical vulnerability kinds (`command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`) and region-level overlap matching.
+Scoring uses six canonical vulnerability kinds (`command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`, `sql_injection`) and region-level overlap matching.
 
 **Why capability-safe regions matter:**
 Agentic code often calls dangerous APIs on purpose — `subprocess.run()`, `fs.writeFile()`, `requests.get()`.
@@ -93,7 +93,7 @@ python scripts/run.py --scanner semgrep --track core --case-id SB-PY-SV-001
 python scripts/run.py --scanner bandit --track core --case-id SB-PY-SV-001
 ```
 
-Both should show `HIT` for SB-PY-SV-001 (SSRF in reference fetcher).
+Both should show `TARGET HIT` for SB-PY-SV-001 (SSRF in reference fetcher).
 
 ## Tracks
 
@@ -103,8 +103,8 @@ Both should show `HIT` for SB-PY-SV-001 (SSRF in reference fetcher).
 ## Status
 
 - **17 Core Track** cases (synthetic vulnerable, capability safe, mixed intent)
-- **27 Full Track** cases (real-world disclosed from public repositories)
-- **44 total cases** across Python, TypeScript, and Rust
+- **40 Full Track** cases (real-world disclosed from public repositories)
+- **57 total cases** across Python, TypeScript, and Rust
 
 ## Official Adapters
 
@@ -131,6 +131,7 @@ These numbers vary slightly across semgrep/bandit versions and rule sets. They a
 | `ssrf` | Making outbound network requests |
 | `auth_bypass` | Authenticating callers and connections |
 | `authz_bypass` | Enforcing per-identity permission scopes |
+| `sql_injection` | Querying and mutating data stores |
 
 ## Scoring
 
