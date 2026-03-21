@@ -43,7 +43,7 @@
     },
     "language": {
       "type": "string",
-      "enum": ["python", "typescript", "rust"],
+      "enum": ["python", "typescript", "rust", "swift"],
       "description": "Primary language of the case"
     },
     "canonicalKind": {

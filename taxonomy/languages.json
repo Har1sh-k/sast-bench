@@ -18,6 +18,12 @@
       "name": "Rust",
       "extensions": [".rs"],
       "coreTrackCases": 4
+    },
+    {
+      "id": "swift",
+      "name": "Swift",
+      "extensions": [".swift"],
+      "coreTrackCases": 0
     }
   ]
 }

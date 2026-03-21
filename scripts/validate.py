@@ -22,7 +22,7 @@ VALID_CASE_TYPES = {
     "mixed_intent",
     "real_world_disclosed",
 }
-VALID_LANGUAGES = {"python", "typescript", "rust"}
+VALID_LANGUAGES = {"python", "typescript", "rust", "swift"}
 VALID_KINDS = {"command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass"}
 VALID_LABELS = {"vulnerable", "capability_safe"}
 VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization"}
