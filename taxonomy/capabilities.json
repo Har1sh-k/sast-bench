@@ -35,6 +35,13 @@
       "description": "Ability to enforce scoped permissions and role boundaries",
       "relatedKinds": ["authz_bypass"],
       "guardContracts": ["scope_binding", "role_check"]
+    },
+    {
+      "id": "data_store",
+      "name": "Data Store Access",
+      "description": "Ability to query, read, and write to databases",
+      "relatedKinds": ["sql_injection"],
+      "guardContracts": ["parameterized_query"]
     }
   ]
 }

@@ -40,6 +40,14 @@
       "capabilitySurface": "authorization",
       "cweMappings": ["CWE-862", "CWE-863"],
       "agenticContext": "Agentic systems manage scoped permissions, device pairings, and channel bindings. The vulnerability occurs when scope checks are missing, scope tokens can be self-minted with broader privileges, or role boundaries are not enforced consistently."
+    },
+    {
+      "id": "sql_injection",
+      "name": "SQL Injection",
+      "description": "Untrusted input reaches SQL query construction without parameterization or proper escaping",
+      "capabilitySurface": "data_store",
+      "cweMappings": ["CWE-89", "CWE-564"],
+      "agenticContext": "Agentic systems with database nodes, import/export features, or dynamic query builders can pass user-controlled or model-controlled input into SQL queries. The vulnerability occurs when identifiers or values are string-interpolated rather than parameterized."
     }
   ]
 }

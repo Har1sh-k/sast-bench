@@ -23,10 +23,10 @@ VALID_CASE_TYPES = {
     "real_world_disclosed",
 }
 VALID_LANGUAGES = {"python", "typescript", "rust", "swift"}
-VALID_KINDS = {"command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass"}
+VALID_KINDS = {"command_injection", "path_traversal", "ssrf", "auth_bypass", "authz_bypass", "sql_injection"}
 VALID_LABELS = {"vulnerable", "capability_safe"}
-VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization"}
-VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist", "caller_verification", "secret_validation", "scope_binding", "role_check"}
+VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization", "data_store"}
+VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist", "caller_verification", "secret_validation", "scope_binding", "role_check", "parameterized_query"}
 VALID_ASI_IDS = {f"ASI{i:02d}" for i in range(1, 11)}
 DISALLOWED_SCAN_ROOT_DIRS = {
     ".claude",

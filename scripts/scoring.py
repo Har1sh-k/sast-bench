@@ -21,6 +21,7 @@ KIND_TO_CAPABILITY = {
     "ssrf": "network",
     "auth_bypass": "authentication",
     "authz_bypass": "authorization",
+    "sql_injection": "data_store",
 }
 
 
