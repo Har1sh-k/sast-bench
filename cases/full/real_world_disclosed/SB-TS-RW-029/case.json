@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "SB-TS-RW-029",
+  "track": "full",
+  "caseType": "real_world_disclosed",
+  "language": "typescript",
+  "canonicalKind": "sql_injection",
+  "title": "n8n SQL injection via unvalidated where-clause operators in MySQL and PostgreSQL nodes",
+  "description": "The MySQL and PostgreSQL database nodes in n8n accept where-clause parameters from workflow configuration and cast them directly to WhereClause objects without validating the condition operator. The addWhereClauses utility function then interpolates the condition field directly into SQL query strings. An attacker with workflow editing permissions can inject arbitrary SQL through the condition field of a where clause, bypassing the parameterized query protections applied to values.",
+  "files": {
+    "root": "../../../../.repos/n8n-io_n8n__9ce3ac09/"
+  },
+  "regions": [
+    {
+      "id": "R1",
+      "path": "packages/nodes-base/nodes/MySql/v2/helpers/utils.ts",
+      "startLine": 480,
+      "endLine": 536,
+      "label": "vulnerable",
+      "capability": "data_store",
+      "acceptedKinds": [
+        "sql_injection"
+      ]
+    },
+    {
+      "id": "R2",
+      "path": "packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts",
+      "startLine": 129,
+      "endLine": 188,
+      "label": "vulnerable",
+      "capability": "data_store",
+      "acceptedKinds": [
+        "sql_injection"
+      ]
+    }
+  ],
+  "expectedOutcome": {
+    "mustDetectRegionIds": [
+      "R1",
+      "R2"
+    ],
+    "mustNotFlagRegionIds": []
+  },
+  "realWorld": {
+    "repo": "n8n-io/n8n",
+    "vulnerableCommit": "9ce3ac092cf7339f3c4a416cdea6e5fa2d5b22b9",
+    "fixCommit": "f73fae6fe7fc34907bba102648a9997186aa4385",
+    "ghsa": "GHSA-f3f2-mcxc-pwjx"
+  },
+  "standards": {
+    "owaspAgenticTop10": {
+      "primary": "ASI02",
+      "secondary": []
+    }
+  }
+}
