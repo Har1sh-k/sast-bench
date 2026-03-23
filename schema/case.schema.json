@@ -99,6 +99,10 @@
       "$ref": "#/$defs/realWorldMeta",
       "description": "Metadata for real_world_disclosed cases"
     },
+    "prSimulation": {
+      "$ref": "#/$defs/prSimulation",
+      "description": "Optional PR simulation metadata for PR benchmark mode"
+    },
     "standards": {
       "$ref": "#/$defs/standardsMappings",
       "description": "Mappings to external security standards"
@@ -240,6 +244,41 @@
         }
       },
       "additionalProperties": false
+    },
+    "prSimulation": {
+      "type": "object",
+      "required": ["mode"],
+      "description": "PR simulation metadata. Defines how to construct base and head trees for PR benchmark mode.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["vendored_base", "git_commit_pair"],
+          "description": "How the clean baseline is provided: vendored_base uses a pr/base/ directory, git_commit_pair uses explicit commit SHAs"
+        },
+        "baseRoot": {
+          "type": "string",
+          "description": "Relative path (from case dir) to the clean baseline tree. Required for vendored_base mode."
+        },
+        "baseCommit": {
+          "type": "string",
+          "description": "Git commit SHA of the clean baseline state. Required for git_commit_pair mode."
+        },
+        "headCommit": {
+          "type": "string",
+          "description": "Git commit SHA of the vulnerable head state. Optional for git_commit_pair mode; defaults to realWorld.vulnerableCommit."
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "vendored_base" } } },
+          "then": { "required": ["baseRoot"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "git_commit_pair" } } },
+          "then": { "required": ["baseCommit"] }
+        }
+      ]
     }
   }
 }
