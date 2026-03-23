@@ -8,6 +8,7 @@ Usage (via run.py):
     python scripts/run.py --scanner semgrep --mode pr --track core
 """
 
+import difflib
 import json
 import shutil
 import subprocess
@@ -140,6 +141,93 @@ def _compute_changed_files(base_root: Path, head_root: Path) -> list[str]:
             changed.append(f)
 
     return changed
+
+
+def _compute_diff_text(base_root: Path, head_root: Path, changed_files: list[str]) -> str:
+    """Compute a unified diff text between base and head for changed files."""
+    diff_parts: list[str] = []
+    for rel_path in changed_files:
+        base_file = base_root / rel_path
+        head_file = head_root / rel_path
+
+        base_lines = []
+        head_lines = []
+        if base_file.exists():
+            try:
+                base_lines = base_file.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True)
+            except Exception:
+                pass
+        if head_file.exists():
+            try:
+                head_lines = head_file.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True)
+            except Exception:
+                pass
+
+        diff = difflib.unified_diff(
+            base_lines, head_lines,
+            fromfile=f"a/{rel_path}",
+            tofile=f"b/{rel_path}",
+        )
+        diff_parts.extend(diff)
+
+    return "".join(diff_parts)
+
+
+def _try_native_pr_scan(
+    adapter,
+    base_root: Path,
+    head_root: Path,
+    changed_files: list[str],
+    diff_text: str,
+    language: str,
+    case: dict,
+) -> tuple[list[Finding], list[Finding], list[Finding], dict] | None:
+    """Try native PR scan if adapter supports it.
+
+    Returns (base_findings, head_findings, review_findings, meta) or None.
+    """
+    if not hasattr(adapter, "scan_pr_with_metadata"):
+        return None
+
+    try:
+        result = adapter.scan_pr_with_metadata(
+            base_root=base_root,
+            head_root=head_root,
+            changed_files=changed_files,
+            diff_text=diff_text,
+            language=language,
+            case=case,
+        )
+    except Exception:
+        return None
+
+    def _parse_findings(raw: list[dict]) -> list[Finding]:
+        findings = []
+        for rf in raw:
+            findings.append(Finding(
+                rule_id=rf["ruleId"],
+                mapped_kind=rf["mappedKind"],
+                path=rf["path"],
+                start_line=rf["startLine"],
+                end_line=rf["endLine"],
+                severity=rf.get("severity", ""),
+                message=rf.get("message", ""),
+            ))
+        return findings
+
+    base_findings = _parse_findings(result.get("baselineFindings", []))
+    head_findings = _parse_findings(result.get("headFindings", []))
+    review_findings = _parse_findings(result.get("reviewFindings", []))
+
+    meta = {
+        "commandInvocation": result.get("commandInvocation"),
+        "exitCode": result.get("exitCode"),
+        "rawStdout": result.get("rawStdout", ""),
+        "rawStderr": result.get("rawStderr", ""),
+        "skipReason": result.get("skipReason"),
+    }
+
+    return base_findings, head_findings, review_findings, meta
 
 
 def _scan_tree(adapter, scan_root: Path, language: str) -> tuple[list[Finding], dict]:
@@ -315,20 +403,32 @@ def run_pr_benchmark(
                 # Compute changed files
                 changed_files = _compute_changed_files(base_root, head_root)
 
-                # Scan base
-                print(f"{B}   Scanning base tree...", flush=True)
-                base_findings, base_meta = _scan_tree(adapter, base_root, case["language"])
+                # Try native PR scan first
+                diff_text = _compute_diff_text(base_root, head_root, changed_files)
+                native_result = _try_native_pr_scan(
+                    adapter, base_root, head_root, changed_files,
+                    diff_text, case["language"], case,
+                )
 
-                # Scan head
-                print(f"{B}   Scanning head tree...", flush=True)
-                head_findings, head_meta = _scan_tree(adapter, head_root, case["language"])
+                if native_result is not None:
+                    print(f"{B}   Using native PR scan...", flush=True)
+                    base_findings, head_findings, review_findings, head_meta = native_result
+                    if head_meta.get("skipReason"):
+                        skip_reason = head_meta["skipReason"]
+                else:
+                    # Fallback: scan both trees independently
+                    print(f"{B}   Scanning base tree...", flush=True)
+                    base_findings, base_meta = _scan_tree(adapter, base_root, case["language"])
 
-                if base_meta.get("skipReason") or head_meta.get("skipReason"):
-                    skip_reason = base_meta.get("skipReason") or head_meta.get("skipReason")
+                    print(f"{B}   Scanning head tree...", flush=True)
+                    head_findings, head_meta = _scan_tree(adapter, head_root, case["language"])
 
-                if not skip_reason:
-                    # Synthesize review findings
-                    review_findings = synthesize_review_findings(base_findings, head_findings)
+                    if base_meta.get("skipReason") or head_meta.get("skipReason"):
+                        skip_reason = base_meta.get("skipReason") or head_meta.get("skipReason")
+
+                    if not skip_reason:
+                        # Synthesize review findings from base vs head diff
+                        review_findings = synthesize_review_findings(base_findings, head_findings)
 
         except Exception as e:
             print(f"{B} ERROR: {e}")
