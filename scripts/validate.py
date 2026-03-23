@@ -28,6 +28,7 @@ VALID_LABELS = {"vulnerable", "capability_safe"}
 VALID_CAPABILITIES = {"code_execution", "filesystem", "network", "authentication", "authorization", "data_store"}
 VALID_GUARDS = {"allowlist", "workspace_root", "host_allowlist", "scheme_allowlist", "caller_verification", "secret_validation", "scope_binding", "role_check", "parameterized_query"}
 VALID_ASI_IDS = {f"ASI{i:02d}" for i in range(1, 11)}
+VALID_PR_MODES = {"vendored_base", "git_commit_pair"}
 DISALLOWED_SCAN_ROOT_DIRS = {
     ".claude",
     ".mypy_cache",
@@ -235,6 +236,33 @@ def validate_case(case_dir: Path) -> list[ValidationError]:
                         errors.append(ValidationError(case_id, f"Invalid secondary ASI ID: {asi_id}"))
                 if primary and primary in owasp.get("secondary", []):
                     errors.append(ValidationError(case_id, f"Primary ASI ID {primary} should not repeat in secondary"))
+
+    # Validate prSimulation (optional)
+    if "prSimulation" in case:
+        pr_sim = case["prSimulation"]
+        if not isinstance(pr_sim, dict):
+            errors.append(ValidationError(case_id, "prSimulation must be an object"))
+        else:
+            pr_mode = pr_sim.get("mode")
+            if pr_mode not in VALID_PR_MODES:
+                errors.append(ValidationError(case_id, f"prSimulation.mode must be one of {sorted(VALID_PR_MODES)}"))
+
+            if pr_mode == "vendored_base":
+                base_root = pr_sim.get("baseRoot")
+                if not base_root:
+                    errors.append(ValidationError(case_id, "vendored_base mode requires prSimulation.baseRoot"))
+                else:
+                    base_path = case_dir / base_root
+                    if not base_path.exists():
+                        errors.append(ValidationError(case_id, f"prSimulation.baseRoot does not exist: {base_root}"))
+                    elif not base_path.is_dir():
+                        errors.append(ValidationError(case_id, f"prSimulation.baseRoot is not a directory: {base_root}"))
+
+            elif pr_mode == "git_commit_pair":
+                if not pr_sim.get("baseCommit"):
+                    errors.append(ValidationError(case_id, "git_commit_pair mode requires prSimulation.baseCommit"))
+                if case_type != "real_world_disclosed":
+                    errors.append(ValidationError(case_id, "git_commit_pair mode is only valid for real_world_disclosed cases"))
 
     # Context file should exist
     if not (case_dir / "context.md").exists():
