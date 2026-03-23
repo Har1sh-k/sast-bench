@@ -7,6 +7,7 @@
   "required": [
     "schemaVersion",
     "benchmarkVersion",
+    "mode",
     "scanner",
     "track",
     "timestamp",
@@ -21,6 +22,11 @@
     "benchmarkVersion": {
       "type": "string",
       "description": "SASTbench version used for this run"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["benchmark", "pr"],
+      "description": "Execution mode: benchmark (standard) or pr (PR simulation)"
     },
     "scanner": {
       "type": "object",
@@ -58,6 +64,10 @@
     },
     "summary": {
       "$ref": "#/$defs/summary"
+    },
+    "prSummary": {
+      "$ref": "#/$defs/prSummary",
+      "description": "Aggregate PR-mode metrics (present only in pr mode results)"
     }
   },
   "additionalProperties": false,
@@ -96,6 +106,14 @@
         },
         "artifacts": {
           "$ref": "#/$defs/artifacts"
+        },
+        "prContext": {
+          "$ref": "#/$defs/prContext",
+          "description": "PR simulation context (present only in pr mode results)"
+        },
+        "prScoring": {
+          "$ref": "#/$defs/prScoring",
+          "description": "PR-specific scoring (present only in pr mode results)"
         }
       },
       "additionalProperties": false
@@ -202,6 +220,72 @@
       },
       "additionalProperties": false
     },
+    "prContext": {
+      "type": "object",
+      "required": ["changedFiles", "baselineFindings", "headFindings", "reviewFindings"],
+      "properties": {
+        "changedFiles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Files changed between base and head"
+        },
+        "baselineFindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" },
+          "description": "Findings from scanning the clean base tree"
+        },
+        "headFindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" },
+          "description": "Findings from scanning the vulnerable head tree"
+        },
+        "reviewFindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/finding" },
+          "description": "New-in-head findings (review findings)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "prScoring": {
+      "type": "object",
+      "required": [
+        "introducedTargetsDetected",
+        "introducedTargetsTotal",
+        "introducedTargetHitRate",
+        "reviewNoise",
+        "capabilityNoise"
+      ],
+      "properties": {
+        "introducedTargetsDetected": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of mustDetectRegionIds hit by reviewFindings"
+        },
+        "introducedTargetsTotal": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total mustDetectRegionIds for this case"
+        },
+        "introducedTargetHitRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "introducedTargetsDetected / introducedTargetsTotal"
+        },
+        "reviewNoise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Review findings that did not match any introduced target"
+        },
+        "capabilityNoise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Review findings that matched a capability_safe region"
+        }
+      },
+      "additionalProperties": false
+    },
     "summary": {
       "type": "object",
       "required": [
@@ -237,6 +321,43 @@
           "minimum": 0,
           "maximum": 1,
           "description": "geometric_mean(recall, 1 - capabilityFpRate, mixedIntentAccuracy)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "prSummary": {
+      "type": "object",
+      "required": [
+        "introducedTargetHitRate",
+        "totalReviewNoise",
+        "totalCapabilityNoise",
+        "casesEvaluated",
+        "casesSkipped"
+      ],
+      "properties": {
+        "introducedTargetHitRate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Aggregate introduced target detection rate across all PR cases"
+        },
+        "totalReviewNoise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total review findings that did not match introduced targets"
+        },
+        "totalCapabilityNoise": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total review findings that matched capability_safe regions"
+        },
+        "casesEvaluated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "casesSkipped": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "additionalProperties": false
