@@ -36,6 +36,35 @@ from run import (
 B = "\033[1;36m[SASTbench]\033[0m"
 SEP = "\033[2m" + "-" * 45 + "\033[0m"
 
+# Directories to exclude from PR tree copies and diffs.
+# These are generated artifacts that pollute changed-file lists
+# and are machine-dependent.
+_IGNORED_DIRS = {
+    "__pycache__",
+    ".git",
+    ".claude",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "node_modules",
+    "venv",
+    ".venv",
+    ".tox",
+    ".eggs",
+    "*.egg-info",
+}
+
+
+def _copytree_ignore(directory: str, contents: list[str]) -> set[str]:
+    """shutil.copytree ignore callback — skip generated/junk dirs."""
+    return {name for name in contents if name in _IGNORED_DIRS}
+
+
+def _is_ignored_path(rel_path: str) -> bool:
+    """Check if a relative path falls under an ignored directory."""
+    parts = rel_path.replace("\\", "/").split("/")
+    return any(part in _IGNORED_DIRS for part in parts)
+
 
 def _has_pr_simulation(case: dict) -> bool:
     """Check if a case has prSimulation metadata."""
@@ -55,8 +84,8 @@ def _materialize_vendored(case_dir: Path, case: dict, tmp_root: Path) -> tuple[P
     base_dst = tmp_root / "base"
     head_dst = tmp_root / "head"
 
-    shutil.copytree(base_src, base_dst)
-    shutil.copytree(head_src, head_dst)
+    shutil.copytree(base_src, base_dst, ignore=_copytree_ignore)
+    shutil.copytree(head_src, head_dst, ignore=_copytree_ignore)
 
     return base_dst, head_dst
 
@@ -118,12 +147,14 @@ def _compute_changed_files(base_root: Path, head_root: Path) -> list[str]:
     for p in base_root.rglob("*"):
         if p.is_file():
             rel = str(p.relative_to(base_root)).replace("\\", "/")
-            base_files.add(rel)
+            if not _is_ignored_path(rel):
+                base_files.add(rel)
 
     for p in head_root.rglob("*"):
         if p.is_file():
             rel = str(p.relative_to(head_root)).replace("\\", "/")
-            head_files.add(rel)
+            if not _is_ignored_path(rel):
+                head_files.add(rel)
 
     # New files in head
     for f in sorted(head_files - base_files):

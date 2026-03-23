@@ -16,6 +16,7 @@ from pr_runner import (
     _compute_changed_files,
     _compute_diff_text,
     _has_pr_simulation,
+    _is_ignored_path,
     _materialize_vendored,
     _scan_tree,
     _finding_to_dict,
@@ -81,6 +82,50 @@ def test_compute_changed_files_modified_file():
 
         changed = _compute_changed_files(base, head)
         assert "a.py" in changed
+
+
+def test_compute_changed_files_ignores_pycache():
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp) / "base"
+        head = Path(tmp) / "head"
+        base.mkdir()
+        head.mkdir()
+
+        (base / "a.py").write_text("same")
+        (head / "a.py").write_text("same")
+
+        # Add __pycache__ only in head
+        pycache = head / "__pycache__"
+        pycache.mkdir()
+        (pycache / "a.cpython-312.pyc").write_bytes(b"\x00")
+
+        changed = _compute_changed_files(base, head)
+        assert not any("__pycache__" in f for f in changed)
+
+
+def test_compute_changed_files_ignores_venv():
+    with tempfile.TemporaryDirectory() as tmp:
+        base = Path(tmp) / "base"
+        head = Path(tmp) / "head"
+        base.mkdir()
+        head.mkdir()
+
+        # venv in head only
+        venv = head / "venv" / "lib"
+        venv.mkdir(parents=True)
+        (venv / "site.py").write_text("stuff")
+
+        changed = _compute_changed_files(base, head)
+        assert not any("venv" in f for f in changed)
+
+
+def test_is_ignored_path():
+    assert _is_ignored_path("__pycache__/foo.pyc")
+    assert _is_ignored_path("agent/__pycache__/planner.cpython-312.pyc")
+    assert _is_ignored_path("venv/lib/site.py")
+    assert _is_ignored_path(".git/HEAD")
+    assert not _is_ignored_path("tools/fetcher.py")
+    assert not _is_ignored_path("agent/router.py")
 
 
 def test_compute_changed_files_identical():
