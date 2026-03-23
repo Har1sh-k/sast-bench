@@ -195,6 +195,156 @@ def test_disallowed_scan_root_directories_are_rejected(tmp_path):
     assert any("Disallowed directory in scan root: node_modules" in str(err) for err in errors)
 
 
+def test_pr_simulation_vendored_base_validates(tmp_path):
+    """vendored_base prSimulation with existing baseRoot should validate."""
+    case_dir = tmp_path / "SB-TMP-SV-002"
+    project_dir = case_dir / "project"
+    project_dir.mkdir(parents=True)
+    base_dir = case_dir / "pr" / "base"
+    base_dir.mkdir(parents=True)
+    (case_dir / "context.md").write_text("test\n", encoding="utf-8")
+    (project_dir / "tool.py").write_text("print('vuln')\n", encoding="utf-8")
+    (base_dir / "tool.py").write_text("print('safe')\n", encoding="utf-8")
+
+    case = {
+        "schemaVersion": "1.0.0",
+        "id": "SB-TMP-SV-002",
+        "track": "core",
+        "caseType": "synthetic_vulnerable",
+        "language": "python",
+        "canonicalKind": "command_injection",
+        "files": {"root": "project/"},
+        "regions": [
+            {
+                "id": "R1", "path": "tool.py", "startLine": 1, "endLine": 1,
+                "label": "vulnerable", "acceptedKinds": ["command_injection"],
+            }
+        ],
+        "expectedOutcome": {"mustDetectRegionIds": ["R1"], "mustNotFlagRegionIds": []},
+        "prSimulation": {"mode": "vendored_base", "baseRoot": "pr/base"},
+        "standards": {"owaspAgenticTop10": {"primary": "ASI05"}},
+    }
+    (case_dir / "case.json").write_text(json.dumps(case), encoding="utf-8")
+
+    errors = validate_case(case_dir)
+    assert len(errors) == 0, f"Unexpected errors: {errors}"
+
+
+def test_pr_simulation_vendored_base_missing_dir(tmp_path):
+    """vendored_base with missing baseRoot directory should fail."""
+    case_dir = tmp_path / "SB-TMP-SV-003"
+    project_dir = case_dir / "project"
+    project_dir.mkdir(parents=True)
+    (case_dir / "context.md").write_text("test\n", encoding="utf-8")
+    (project_dir / "tool.py").write_text("print('vuln')\n", encoding="utf-8")
+
+    case = {
+        "schemaVersion": "1.0.0",
+        "id": "SB-TMP-SV-003",
+        "track": "core",
+        "caseType": "synthetic_vulnerable",
+        "language": "python",
+        "canonicalKind": "command_injection",
+        "files": {"root": "project/"},
+        "regions": [
+            {
+                "id": "R1", "path": "tool.py", "startLine": 1, "endLine": 1,
+                "label": "vulnerable", "acceptedKinds": ["command_injection"],
+            }
+        ],
+        "expectedOutcome": {"mustDetectRegionIds": ["R1"], "mustNotFlagRegionIds": []},
+        "prSimulation": {"mode": "vendored_base", "baseRoot": "pr/base"},
+        "standards": {"owaspAgenticTop10": {"primary": "ASI05"}},
+    }
+    (case_dir / "case.json").write_text(json.dumps(case), encoding="utf-8")
+
+    errors = validate_case(case_dir)
+    assert any("does not exist" in str(e) for e in errors)
+
+
+def test_pr_simulation_git_commit_pair_requires_real_world(tmp_path):
+    """git_commit_pair mode on non-real_world_disclosed case should fail."""
+    case_dir = tmp_path / "SB-TMP-SV-004"
+    project_dir = case_dir / "project"
+    project_dir.mkdir(parents=True)
+    (case_dir / "context.md").write_text("test\n", encoding="utf-8")
+    (project_dir / "tool.py").write_text("print('vuln')\n", encoding="utf-8")
+
+    case = {
+        "schemaVersion": "1.0.0",
+        "id": "SB-TMP-SV-004",
+        "track": "core",
+        "caseType": "synthetic_vulnerable",
+        "language": "python",
+        "canonicalKind": "command_injection",
+        "files": {"root": "project/"},
+        "regions": [
+            {
+                "id": "R1", "path": "tool.py", "startLine": 1, "endLine": 1,
+                "label": "vulnerable", "acceptedKinds": ["command_injection"],
+            }
+        ],
+        "expectedOutcome": {"mustDetectRegionIds": ["R1"], "mustNotFlagRegionIds": []},
+        "prSimulation": {"mode": "git_commit_pair", "baseCommit": "abc123"},
+        "standards": {"owaspAgenticTop10": {"primary": "ASI05"}},
+    }
+    (case_dir / "case.json").write_text(json.dumps(case), encoding="utf-8")
+
+    errors = validate_case(case_dir)
+    assert any("real_world_disclosed" in str(e) for e in errors)
+
+
+def test_pr_simulation_invalid_mode(tmp_path):
+    """Invalid prSimulation mode should fail validation."""
+    case_dir = tmp_path / "SB-TMP-SV-005"
+    project_dir = case_dir / "project"
+    project_dir.mkdir(parents=True)
+    (case_dir / "context.md").write_text("test\n", encoding="utf-8")
+    (project_dir / "tool.py").write_text("print('vuln')\n", encoding="utf-8")
+
+    case = {
+        "schemaVersion": "1.0.0",
+        "id": "SB-TMP-SV-005",
+        "track": "core",
+        "caseType": "synthetic_vulnerable",
+        "language": "python",
+        "canonicalKind": "command_injection",
+        "files": {"root": "project/"},
+        "regions": [
+            {
+                "id": "R1", "path": "tool.py", "startLine": 1, "endLine": 1,
+                "label": "vulnerable", "acceptedKinds": ["command_injection"],
+            }
+        ],
+        "expectedOutcome": {"mustDetectRegionIds": ["R1"], "mustNotFlagRegionIds": []},
+        "prSimulation": {"mode": "invalid_mode"},
+        "standards": {"owaspAgenticTop10": {"primary": "ASI05"}},
+    }
+    (case_dir / "case.json").write_text(json.dumps(case), encoding="utf-8")
+
+    errors = validate_case(case_dir)
+    assert any("mode" in str(e) for e in errors)
+
+
+def test_pr_seeded_cases_validate():
+    """All seeded PR cases should pass validation."""
+    pr_cases = []
+    for case_json in CASES_DIR.rglob("case.json"):
+        with open(case_json, encoding="utf-8") as f:
+            case = json.load(f)
+        if "prSimulation" in case:
+            pr_cases.append(case_json.parent)
+
+    assert len(pr_cases) >= 2, f"Expected at least 2 PR-seeded cases, found {len(pr_cases)}"
+
+    all_errors = []
+    for case_dir in pr_cases:
+        errors = validate_case(case_dir)
+        all_errors.extend(errors)
+
+    assert len(all_errors) == 0, f"PR case validation errors: {all_errors}"
+
+
 if __name__ == "__main__":
     test_core_cases_are_valid()
     test_minimum_case_count()
