@@ -198,7 +198,12 @@ def _try_native_pr_scan(
             language=language,
             case=case,
         )
-    except Exception:
+    except Exception as e:
+        print(
+            f"{B} WARNING: native scan_pr_with_metadata() failed: {e}",
+            file=sys.stderr,
+        )
+        print(f"{B} WARNING: falling back to dual-scan mode", file=sys.stderr)
         return None
 
     def _parse_findings(raw: list[dict]) -> list[Finding]:
@@ -527,31 +532,14 @@ def run_pr_benchmark(
             _print_pr_verbose(base_findings, head_findings, review_findings, changed_files, B)
         print()
 
-    # Compute summary
+    # Compute PR summary (the authoritative metrics for PR mode)
     pr_summary = compute_pr_summary(all_scorings, skipped)
 
-    # Also compute benchmark summary for compatibility
-    from scoring import compute_summary, CaseScoring
-    benchmark_scorings = []
-    benchmark_cases = []
-    for cr in case_results:
-        s = cr["scoring"]
-        benchmark_scorings.append(CaseScoring(
-            case_id=cr["caseId"],
-            case_type=cr["caseType"],
-            true_positives=s["truePositives"],
-            false_negatives=s["falseNegatives"],
-            false_positives=s["falsePositives"],
-            capability_false_positives=s["capabilityFalsePositives"],
-        ))
-        # Find matching case dict
-        for _, c in pr_cases:
-            if c["id"] == cr["caseId"]:
-                benchmark_cases.append(c)
-                break
-
-    benchmark_summary = compute_summary(benchmark_scorings, benchmark_cases)
-
+    # Populate the required summary block from PR scoring so it reflects
+    # review-finding reality, not head-tree benchmark scoring.
+    # recall = introduced target hit rate (the PR-mode analog)
+    # precision/capabilityFpRate/mixedIntentAccuracy/agenticScore are not
+    # meaningful in PR mode, so they are set to 0.
     results = {
         "schemaVersion": "1.0.0",
         "benchmarkVersion": "1.0.0-dev",
@@ -565,11 +553,11 @@ def run_pr_benchmark(
         "timestamp": started_at.isoformat(),
         "caseResults": case_results,
         "summary": {
-            "recall": benchmark_summary.recall,
-            "precision": benchmark_summary.precision,
-            "capabilityFpRate": benchmark_summary.capability_fp_rate,
-            "mixedIntentAccuracy": benchmark_summary.mixed_intent_accuracy,
-            "agenticScore": benchmark_summary.agentic_score,
+            "recall": pr_summary.introduced_target_hit_rate,
+            "precision": 0.0,
+            "capabilityFpRate": 0.0,
+            "mixedIntentAccuracy": 0.0,
+            "agenticScore": 0.0,
         },
         "prSummary": {
             "introducedTargetHitRate": pr_summary.introduced_target_hit_rate,
@@ -590,11 +578,6 @@ def run_pr_benchmark(
     print(f"{B}   Cases Evaluated:            {pr_summary.cases_evaluated}")
     if pr_summary.cases_skipped:
         print(f"{B}   Cases Skipped:              {pr_summary.cases_skipped}")
-
-    if verbose:
-        print(f"{B}   ---")
-        print(f"{B}   Benchmark Recall:           {benchmark_summary.recall:.1%}")
-        print(f"{B}   Benchmark Precision:        {benchmark_summary.precision:.1%}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
