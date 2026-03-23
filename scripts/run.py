@@ -8,6 +8,7 @@ Usage:
     python scripts/run.py --scanner semgrep --track core --verbose
     python scripts/run.py --scanner bandit --track core -o results.json
     python scripts/run.py --scanner semgrep --track full --case-id SB-PY-RW-001
+    python scripts/run.py --scanner semgrep --mode pr --track core
 """
 
 import argparse
@@ -71,10 +72,11 @@ def load_adapter(scanner_name: str):
     return adapter
 
 
-def default_output_path(scanner_name: str, track: str, started_at: datetime) -> Path:
+def default_output_path(scanner_name: str, track: str, started_at: datetime, mode: str = "benchmark") -> Path:
     """Build a default output path when none is provided."""
     stamp = started_at.strftime("%Y%m%dT%H%M%SZ")
-    return REPO_ROOT / "results" / f"{scanner_name}_{track}_{stamp}.json"
+    mode_tag = f"_{mode}" if mode != "benchmark" else ""
+    return REPO_ROOT / "results" / f"{scanner_name}_{track}{mode_tag}_{stamp}.json"
 
 
 def normalize_relpath(path: Path, base_dir: Path) -> str:
@@ -145,10 +147,23 @@ def run_benchmark(
     case_type: str | None = None,
     case_id: str | None = None,
     verbose: bool = False,
+    mode: str = "benchmark",
 ) -> int:
     """Run the benchmark and produce results."""
     started_at = datetime.now(timezone.utc)
-    output_path = output_path or default_output_path(scanner_name, track, started_at)
+    output_path = output_path or default_output_path(scanner_name, track, started_at, mode)
+
+    if mode == "pr":
+        from pr_runner import run_pr_benchmark
+        return run_pr_benchmark(
+            scanner_name=scanner_name,
+            track=track,
+            output_path=output_path,
+            case_type=case_type,
+            case_id=case_id,
+            verbose=verbose,
+            started_at=started_at,
+        )
     output_dir = output_path.parent
     artifacts_root = output_dir / f"{output_path.stem}_artifacts"
 
@@ -275,6 +290,7 @@ def run_benchmark(
     results = {
         "schemaVersion": "1.0.0",
         "benchmarkVersion": "1.0.0-dev",
+        "mode": "benchmark",
         "scanner": {
             "name": scanner_name,
             "version": scanner_version,
@@ -319,6 +335,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="SASTbench runner")
     parser.add_argument("--scanner", required=True, help="Scanner adapter name")
     parser.add_argument("--track", default="core", choices=["core", "full"])
+    parser.add_argument("--mode", default="benchmark", choices=["benchmark", "pr"],
+                        help="Execution mode: benchmark (default) or pr (PR simulation)")
     parser.add_argument("--output", "-o", type=Path, help="Output JSON file path (defaults under results/)")
     parser.add_argument(
         "--case-type",
@@ -336,7 +354,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    return run_benchmark(args.scanner, args.track, args.output, args.case_type, args.case_id, args.verbose)
+    return run_benchmark(args.scanner, args.track, args.output, args.case_type, args.case_id, args.verbose, args.mode)
 
 
 if __name__ == "__main__":
