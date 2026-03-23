@@ -36,6 +36,10 @@
     "ghsa": "GHSA-x39x-9qw5-ghrf",
     "cve": "CVE-2025-47241"
   },
+  "prSimulation": {
+    "mode": "git_commit_pair",
+    "baseCommit": "2f83e34ca5684f77e553f678bdaf8af1ba2fa4bb"
+  },
   "standards": {
     "owaspAgenticTop10": {
       "primary": "ASI02"
