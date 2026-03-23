@@ -418,6 +418,65 @@ Before submitting an adapter:
 
 ---
 
+## PR mode support (optional)
+
+SASTbench supports a PR simulation mode that compares base (clean) and head (vulnerable) trees. Adapters can optionally implement native PR review support.
+
+### Optional: scan_pr_with_metadata
+
+If your scanner supports diff-aware or PR-style review (e.g., it can compare two trees and focus on changed files), implement this method:
+
+```python
+def scan_pr_with_metadata(
+    base_root: Path,
+    head_root: Path,
+    changed_files: list[str],
+    diff_text: str,
+    language: str | None = None,
+    case: dict | None = None,
+) -> dict:
+    """Run a PR-aware scan comparing base and head trees.
+
+    Parameters:
+        base_root:      Absolute path to the clean baseline tree
+        head_root:      Absolute path to the vulnerable head tree
+        changed_files:  List of file paths that changed (relative, forward slashes)
+        diff_text:      Unified diff text between base and head
+        language:       Primary language of the case (optional)
+        case:           Full case definition dict (optional, for advanced adapters)
+
+    Returns a dict with:
+        reviewFindings:     list[dict]   — findings from the PR review (new/relevant findings)
+        baselineFindings:   list[dict]   — findings from scanning the base tree
+        headFindings:       list[dict]   — findings from scanning the head tree
+        commandInvocation:  list[str]    — the exact command(s) run
+        exitCode:           int | None   — scanner exit code
+        rawStdout:          str          — full stdout capture
+        rawStderr:          str          — full stderr capture
+        skipReason:         str | None   — why the scan was skipped, if applicable
+    """
+    ...
+```
+
+If `scan_pr_with_metadata` is not implemented, the runner uses a **fallback** approach:
+1. Runs `scan()` or `scan_with_metadata()` on the base tree
+2. Runs `scan()` or `scan_with_metadata()` on the head tree
+3. Computes "new-in-head" review findings by diffing the two result sets
+
+The fallback is conservative: it matches findings by normalized path, mapped kind, rule ID, and overlapping/nearby line ranges (within 10 lines). This works well for most scanners.
+
+### When to implement native PR support
+
+Implement `scan_pr_with_metadata` when your scanner:
+- Has built-in diff/PR review capabilities
+- Can focus analysis on changed files for better signal
+- Produces different output when given diff context vs scanning a full tree
+- Benefits from seeing both base and head simultaneously
+
+For traditional SAST tools (Semgrep, Bandit), the fallback approach is usually sufficient.
+
+---
+
 ## Reference adapters
 
 | Adapter | Type | Study it for |
