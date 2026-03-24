@@ -29,6 +29,10 @@
     ],
     "mustNotFlagRegionIds": []
   },
+  "prSimulation": {
+    "mode": "vendored_base",
+    "baseRoot": "pr/base"
+  },
   "standards": {
     "owaspAgenticTop10": {
       "primary": "ASI04",
