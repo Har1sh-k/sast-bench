@@ -387,18 +387,31 @@ def run_pr_benchmark(
     scanner_version = adapter.get_version()
 
     all_cases = find_cases(track, case_type, case_id)
-    pr_cases = [(d, c) for d, c in all_cases if _has_pr_simulation(c)]
+    # PR mode only runs cases that have prSimulation AND mustDetectRegionIds.
+    # Cases with empty mustDetectRegionIds (e.g. capability_safe) don't test
+    # vulnerability detection, so they are excluded from PR benchmarking.
+    pr_cases = []
+    no_targets_skipped = 0
+    for d, c in all_cases:
+        if not _has_pr_simulation(c):
+            continue
+        if not c["expectedOutcome"].get("mustDetectRegionIds"):
+            no_targets_skipped += 1
+            continue
+        pr_cases.append((d, c))
 
     if not pr_cases:
-        print(f"{B} No PR-capable cases found (need prSimulation metadata).")
-        skipped_count = len(all_cases)
+        print(f"{B} No PR-capable cases found (need prSimulation + mustDetectRegionIds).")
+        skipped_count = len(all_cases) - len(pr_cases)
         if skipped_count:
-            print(f"{B} {skipped_count} case(s) skipped (no prSimulation).")
+            print(f"{B} {skipped_count} case(s) skipped.")
         return 1
 
-    skipped = len(all_cases) - len(pr_cases)
+    skipped = len(all_cases) - len(pr_cases) - no_targets_skipped
     print(f"{B} Running SASTbench PR mode ({track} track) with {scanner_name}")
     print(f"{B} Found {len(pr_cases)} PR-capable cases")
+    if no_targets_skipped:
+        print(f"{B} Skipping {no_targets_skipped} cases with no mustDetectRegionIds (e.g. capability_safe)")
     if skipped:
         print(f"{B} Skipping {skipped} cases without prSimulation")
     print()
@@ -474,9 +487,10 @@ def run_pr_benchmark(
             if tmp_dir and tmp_dir.exists():
                 shutil.rmtree(tmp_dir, ignore_errors=True)
 
-        # Score
+        # Score — only count cases that actually ran as "evaluated"
         if not skip_reason:
             pr_scoring = score_pr_case(case, review_findings)
+            all_scorings.append(pr_scoring)
         else:
             pr_scoring = PRCaseScoring(
                 case_id=current_case_id,
@@ -484,8 +498,7 @@ def run_pr_benchmark(
                     case["expectedOutcome"].get("mustDetectRegionIds", [])
                 ),
             )
-
-        all_scorings.append(pr_scoring)
+            skipped += 1
 
         # Write artifacts
         artifact_info = {
