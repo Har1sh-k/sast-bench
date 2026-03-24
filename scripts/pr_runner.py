@@ -71,6 +71,33 @@ def _has_pr_simulation(case: dict) -> bool:
     return "prSimulation" in case
 
 
+def _git_init(directory: Path) -> None:
+    """Initialize a git repo with an initial commit so LLM scanners work.
+
+    Some scanners (e.g. securevibes-agent) require a git repository.
+    Temp dirs created by copytree are not git repos, so we init one.
+    """
+    subprocess.run(
+        ["git", "init"],
+        cwd=str(directory),
+        capture_output=True,
+        timeout=10,
+    )
+    subprocess.run(
+        ["git", "add", "."],
+        cwd=str(directory),
+        capture_output=True,
+        timeout=30,
+    )
+    subprocess.run(
+        ["git", "-c", "user.name=SASTbench", "-c", "user.email=bench@local",
+         "commit", "-m", "initial", "--allow-empty"],
+        cwd=str(directory),
+        capture_output=True,
+        timeout=30,
+    )
+
+
 def _materialize_vendored(case_dir: Path, case: dict, tmp_root: Path) -> tuple[Path, Path]:
     """Materialize base and head trees for a vendored_base case.
 
@@ -86,6 +113,10 @@ def _materialize_vendored(case_dir: Path, case: dict, tmp_root: Path) -> tuple[P
 
     shutil.copytree(base_src, base_dst, ignore=_copytree_ignore)
     shutil.copytree(head_src, head_dst, ignore=_copytree_ignore)
+
+    # Init git repos so LLM-backed scanners can operate
+    _git_init(base_dst)
+    _git_init(head_dst)
 
     return base_dst, head_dst
 
