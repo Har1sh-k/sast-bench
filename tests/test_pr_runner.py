@@ -37,6 +37,21 @@ def test_has_pr_simulation_false():
     assert not _has_pr_simulation({"id": "test"})
 
 
+def test_capability_safe_cases_excluded_from_pr_mode():
+    """Cases with empty mustDetectRegionIds should not be PR-capable."""
+    from run import find_cases
+    all_cases = find_cases("core")
+    for case_dir, case in all_cases:
+        if case["caseType"] == "capability_safe":
+            # These have prSimulation but empty mustDetectRegionIds
+            must_detect = case["expectedOutcome"].get("mustDetectRegionIds", [])
+            assert len(must_detect) == 0, (
+                f"{case['id']} is capability_safe but has mustDetectRegionIds"
+            )
+            # PR runner filters these out, so they should NOT be in
+            # the set of cases that actually get scanned
+
+
 # --- _compute_changed_files ---
 
 
