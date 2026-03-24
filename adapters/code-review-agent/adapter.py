@@ -13,10 +13,17 @@ from pathlib import Path
 
 ADAPTER_VERSION = "1.1.0"
 
-CODE_REVIEW_AGENT_DIR = Path(os.environ.get(
-    "CODE_REVIEW_AGENT_DIR",
-    r"D:\GIT\git repos\agent-security-scanner-mcp\code-review-agent",
-))
+CODE_REVIEW_AGENT_DIR = Path(os.environ.get("CODE_REVIEW_AGENT_DIR", ""))
+if not CODE_REVIEW_AGENT_DIR or not CODE_REVIEW_AGENT_DIR.exists():
+    # Try to find it as a sibling of the sast-bench repo
+    _repo_root = Path(__file__).resolve().parent.parent.parent
+    for _candidate_path in [
+        _repo_root.parent / "agent-security-scanner-mcp" / "code-review-agent",
+        _repo_root.parent / "code-review-agent",
+    ]:
+        if _candidate_path.exists():
+            CODE_REVIEW_AGENT_DIR = _candidate_path
+            break
 
 # fnm-managed Node.js PATH setup for Windows.
 _FNM_NODE_DIR = os.environ.get("FNM_NODE_DIR", "")

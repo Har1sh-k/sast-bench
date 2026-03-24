@@ -15,10 +15,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-SECUREVIBES_AGENT_DIR = Path(os.environ.get(
-    "SECUREVIBES_AGENT_DIR",
-    r"D:\GIT\git repos\securevibes-agent",
-))
+ADAPTER_VERSION = "1.2.0"
+
+SECUREVIBES_AGENT_DIR = Path(os.environ.get("SECUREVIBES_AGENT_DIR", ""))
+if not SECUREVIBES_AGENT_DIR or not SECUREVIBES_AGENT_DIR.exists():
+    # Try to find it as a sibling of the sast-bench repo
+    _repo_root = Path(__file__).resolve().parent.parent.parent
+    _candidate = _repo_root.parent / "securevibes-agent"
+    if _candidate.exists():
+        SECUREVIBES_AGENT_DIR = _candidate
 
 # fnm-managed Node.js isn't always on the Windows system PATH that Python
 # inherits.  Resolve a stable node directory once at import time.
@@ -36,10 +41,14 @@ VULN_CLASS_MAP = {
     "commandinjection": "command_injection",
     "codeexec": "command_injection",
     "sandboxescape": "path_traversal",
-    # Others don't map cleanly to the 3 V1 canonical kinds
+    "pathtraversal": "path_traversal",
+    "ssrf": "ssrf",
+    "requestforgery": "ssrf",
+    "authbypass": "auth_bypass",
+    "brokenauthz": "authz_bypass",
+    "sqlinjection": "sql_injection",
+    # Others don't map to the benchmark taxonomy
     "xss": "unmapped",
-    "authbypass": "unmapped",
-    "brokenauthz": "unmapped",
     "abuse": "unmapped",
     "inputvalidation": "unmapped",
     "secretdisclosure": "unmapped",
@@ -62,6 +71,13 @@ VULN_PATTERN_MAP = {
     "request-forgery": "ssrf",
     "url": "ssrf",
     "fetch": "ssrf",
+    "auth bypass": "auth_bypass",
+    "authentication": "auth_bypass",
+    "unauthenticated": "auth_bypass",
+    "authorization": "authz_bypass",
+    "privilege": "authz_bypass",
+    "sql injection": "sql_injection",
+    "sql": "sql_injection",
 }
 
 
@@ -167,9 +183,12 @@ def _read_finding_files(findings_dir: Path) -> list[dict]:
     return records
 
 
-def scan(scan_root: Path, language: str) -> list[dict]:
-    """Run securevibes-agent on the scan root and return normalized findings."""
+def _run_scan(scan_root: Path, language: str) -> tuple[list[dict], list[str], str, str, str | None]:
+    """Run securevibes-agent and return (findings, command, stdout, stderr, skipReason)."""
     scan_root = scan_root.resolve()
+
+    if not SECUREVIBES_AGENT_DIR or not SECUREVIBES_AGENT_DIR.exists():
+        return [], [], "", "", "securevibes-agent not found (set SECUREVIBES_AGENT_DIR)"
 
     # Remove any stale .securevibes state so findings are fresh.
     sv_dir = scan_root / ".securevibes"
@@ -182,26 +201,28 @@ def scan(scan_root: Path, language: str) -> list[dict]:
     # On Windows subprocess needs the .cmd extension for npm/npx shims.
     npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
 
+    cmd = [
+        npx_cmd, "tsx",
+        str(SECUREVIBES_AGENT_DIR / "src" / "runtime" / "cli.ts"),
+        "bootstrap",
+        "--repo", str(scan_root),
+        "--analysis-mode", "llm",
+        "--llm-model", llm_model,
+    ]
+
     print("\n", flush=True)
     try:
         # Let stdout and stderr stream to the terminal so the user sees
         # progress in real-time.  We read findings from the .securevibes/
         # knowledge-base files afterward instead of parsing JSON stdout.
         subprocess.run(
-            [
-                npx_cmd, "tsx",
-                str(SECUREVIBES_AGENT_DIR / "src" / "runtime" / "cli.ts"),
-                "bootstrap",
-                "--repo", str(scan_root),
-                "--analysis-mode", "llm",
-                "--llm-model", llm_model,
-            ],
+            cmd,
             cwd=str(SECUREVIBES_AGENT_DIR),
             env=env,
         )
     except FileNotFoundError:
         print("    npx/tsx not found — install Node.js and tsx")
-        return []
+        return [], cmd, "", "", "npx_not_found"
 
     # Read findings from the knowledge-base files written by the scan.
     kb_records = _read_finding_files(sv_dir / "findings") if sv_dir.exists() else []
@@ -244,4 +265,23 @@ def scan(scan_root: Path, language: str) -> list[dict]:
             "message": title,
         })
 
+    return findings, cmd, "", "", None
+
+
+def scan(scan_root: Path, language: str) -> list[dict]:
+    """Run securevibes-agent on the scan root and return normalized findings."""
+    findings, _, _, _, _ = _run_scan(scan_root, language)
     return findings
+
+
+def scan_with_metadata(scan_root: Path, language: str) -> dict:
+    """Return findings plus raw scanner output and command metadata."""
+    findings, cmd, stdout, stderr, skip_reason = _run_scan(scan_root, language)
+    return {
+        "findings": findings,
+        "commandInvocation": cmd,
+        "exitCode": 0 if not skip_reason else None,
+        "rawStdout": stdout,
+        "rawStderr": stderr,
+        "skipReason": skip_reason,
+    }
