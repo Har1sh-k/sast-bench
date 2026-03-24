@@ -37,19 +37,36 @@ def test_has_pr_simulation_false():
     assert not _has_pr_simulation({"id": "test"})
 
 
-def test_capability_safe_cases_excluded_from_pr_mode():
-    """Cases with empty mustDetectRegionIds should not be PR-capable."""
+def test_capability_safe_cases_excluded_from_pr_filtering():
+    """The PR runner filtering logic must exclude cases with empty mustDetectRegionIds."""
     from run import find_cases
+
     all_cases = find_cases("core")
-    for case_dir, case in all_cases:
-        if case["caseType"] == "capability_safe":
-            # These have prSimulation but empty mustDetectRegionIds
-            must_detect = case["expectedOutcome"].get("mustDetectRegionIds", [])
-            assert len(must_detect) == 0, (
-                f"{case['id']} is capability_safe but has mustDetectRegionIds"
-            )
-            # PR runner filters these out, so they should NOT be in
-            # the set of cases that actually get scanned
+
+    # Apply the same filtering logic as run_pr_benchmark()
+    pr_cases = []
+    no_targets_skipped = 0
+    for d, c in all_cases:
+        if not _has_pr_simulation(c):
+            continue
+        if not c["expectedOutcome"].get("mustDetectRegionIds"):
+            no_targets_skipped += 1
+            continue
+        pr_cases.append((d, c))
+
+    # capability_safe cases have prSimulation but should be filtered out
+    pr_case_types = {c["caseType"] for _, c in pr_cases}
+    assert "capability_safe" not in pr_case_types, (
+        "capability_safe cases should not pass PR mode filtering"
+    )
+    assert no_targets_skipped >= 3, (
+        f"Expected at least 3 no-target skips (capability_safe), got {no_targets_skipped}"
+    )
+    # All remaining PR cases should have targets
+    for _, c in pr_cases:
+        assert len(c["expectedOutcome"]["mustDetectRegionIds"]) > 0, (
+            f"{c['id']} passed PR filtering but has no mustDetectRegionIds"
+        )
 
 
 # --- _compute_changed_files ---
