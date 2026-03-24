@@ -1,64 +1,86 @@
 # SASTbench Adapters
 
-Each adapter lives in its own directory and implements a Python module
-named `adapter.py` with two required functions:
+Each adapter lives in `adapters/<scanner-name>/adapter.py` and normalizes scanner output into the SASTbench finding format.
 
-## Required Interface
+Use [CREATING_AN_ADAPTER.md](./CREATING_AN_ADAPTER.md) for the full adapter contract.
+
+If you want another agent to implement the adapter, use the repo-local skill at [../skills/sastbench-adapter-authoring/SKILL.md](../skills/sastbench-adapter-authoring/SKILL.md).
+
+## Required interface
+
+Every adapter must implement:
 
 ```python
 def get_version() -> str:
-    """Return the scanner version string."""
     ...
 
+
 def scan(scan_root: Path, language: str) -> list[dict]:
-    """Run the scanner and return normalized findings.
-
-    Each finding dict must have:
-      - ruleId: str       - original scanner rule ID
-      - mappedKind: str   - canonical kind
-                           (command_injection, path_traversal, ssrf,
-                            auth_bypass, authz_bypass, unmapped)
-      - path: str         - file path relative to scan_root
-      - startLine: int    - first line of the finding
-      - endLine: int      - last line of the finding
-
-    Optional fields:
-      - severity: str     - low, medium, high, critical
-      - message: str      - scanner-reported message
-    """
     ...
 ```
 
-Official adapters should also expose:
+Each finding must include:
+
+- `ruleId`
+- `mappedKind`
+- `path`
+- `startLine`
+- `endLine`
+
+Optional fields:
+
+- `severity`
+- `message`
+
+## Supported canonical kinds
+
+Adapters must map findings to one of:
+
+- `command_injection`
+- `path_traversal`
+- `ssrf`
+- `auth_bypass`
+- `authz_bypass`
+- `sql_injection`
+- `unmapped`
+
+## Optional metadata interfaces
+
+Raw-output preservation:
 
 ```python
 def scan_with_metadata(scan_root: Path, language: str) -> dict:
-    """Return findings plus raw stdout/stderr and command metadata."""
     ...
 ```
 
-`scan_with_metadata()` is what lets the benchmark preserve raw scanner
-output for auditing and link to those artifacts from reports.
+PR-aware scanning:
 
-## Official Adapters
+```python
+def scan_pr_with_metadata(
+    base_root: Path,
+    head_root: Path,
+    changed_files: list[str],
+    diff_text: str,
+    language: str | None = None,
+    case: dict | None = None,
+) -> dict:
+    ...
+```
+
+If `scan_pr_with_metadata` is absent, SASTbench falls back to base-tree plus head-tree synthesis in PR mode.
+
+## Official adapters
 
 | Adapter | Scanner | Languages |
 |---------|---------|-----------|
 | `semgrep/` | Semgrep | Python, TypeScript, Rust |
 | `bandit/` | Bandit | Python only |
 
-These are the only baseline adapters intended for official leaderboard runs today.
+These are the baseline adapters intended for official comparison runs today.
 
-## Experimental Adapters
+## Experimental adapters
 
 - `securevibes-agent/`
 - `code-review-agent/`
 
-Experimental adapters are useful for local comparison work, but they are not part of the official baseline until they meet the same reproducibility and path-plus-line fidelity requirements as the baseline adapters.
-
-## Adding a New Adapter
-
-1. Create a directory under `adapters/` with the scanner name
-2. Add an `adapter.py` implementing `get_version()` and `scan()`
-3. Map scanner rules to canonical kinds in a `RULE_KIND_MAP` dict
-4. Test with: `python scripts/run.py --scanner <name> --track core`
+These are useful for local comparison and development, but they are not baseline leaderboard adapters today.

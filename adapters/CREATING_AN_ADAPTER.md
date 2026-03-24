@@ -2,6 +2,8 @@
 
 This guide covers everything needed to build an adapter that connects a security scanner to the SASTbench benchmark harness. Use it as a reference or as a prompt to generate a new adapter.
 
+If you want another agent to implement the adapter for you, use the repo-local skill at [../skills/sastbench-adapter-authoring/SKILL.md](../skills/sastbench-adapter-authoring/SKILL.md).
+
 ---
 
 ## What an adapter does
@@ -56,13 +58,14 @@ def scan(scan_root: Path, language: str) -> list[dict]:
     Parameters:
         scan_root: Absolute path to the directory to scan. This is the
                    case's files.root resolved to an absolute path.
-        language:  One of "python", "typescript", "rust".
+        language:  One of "python", "typescript", "rust", or "swift".
 
     Returns a list of finding dicts. Each dict MUST have:
 
         ruleId:     str  — original scanner rule ID or identifier
         mappedKind: str  — one of: "command_injection", "path_traversal",
-                           "ssrf", "unmapped"
+                           "ssrf", "auth_bypass", "authz_bypass",
+                           "sql_injection", "unmapped"
         path:       str  — file path RELATIVE to scan_root (forward slashes)
         startLine:  int  — first line of the finding (1-indexed)
         endLine:    int  — last line of the finding (1-indexed)
@@ -77,6 +80,8 @@ def scan(scan_root: Path, language: str) -> list[dict]:
     """
     ...
 ```
+
+Current repo note: valid `mappedKind` values also include `auth_bypass`, `authz_bypass`, and `sql_injection`. Adapters must use the full six-kind set, plus `unmapped`.
 
 ### Optional: scan_with_metadata
 
@@ -111,7 +116,7 @@ Stored in the results JSON for reproducibility. Defaults to "1.0.0" if not set.
 
 ## Canonical kinds
 
-SASTbench currently uses five canonical vulnerability kinds for scoring. Every finding must be mapped to one of these or to `"unmapped"`:
+SASTbench currently uses six canonical vulnerability kinds for scoring. Every finding must be mapped to one of these or to `"unmapped"`:
 
 | Canonical kind       | What it covers                           | Capability family |
 |----------------------|------------------------------------------|-------------------|
@@ -120,8 +125,9 @@ SASTbench currently uses five canonical vulnerability kinds for scoring. Every f
 | `ssrf`               | Server-side request forgery, URL abuse    | `network`         |
 | `auth_bypass`        | Missing or broken caller authentication   | `authentication`  |
 | `authz_bypass`       | Missing or broken scope and role checks   | `authorization`   |
+| `sql_injection`      | Unsafe query construction and execution   | `data_store`      |
 
-Findings that don't map to any of these five should use `"unmapped"`. Unmapped findings are counted as false positives in scoring but don't affect the agentic-specific metrics.
+Findings that don't map to any of these six should use `"unmapped"`. Unmapped findings are counted as false positives in scoring but don't affect the agentic-specific metrics.
 
 ---
 
@@ -152,6 +158,7 @@ RULE_KIND_MAP = {
     "scanner-rule-for-file-write": "path_traversal",
     "scanner-rule-for-missing-auth": "auth_bypass",
     "scanner-rule-for-missing-role-check": "authz_bypass",
+    "scanner-rule-for-sql-concat": "sql_injection",
 }
 ```
 
@@ -173,6 +180,8 @@ RULE_PATTERN_MAP = {
     "missing-authentication": "auth_bypass",
     "missing-authorization": "authz_bypass",
     "missing-role-check": "authz_bypass",
+    "sql": "sql_injection",
+    "query-concat": "sql_injection",
 }
 ```
 
@@ -371,9 +380,17 @@ python scripts/run.py --scanner <name> --track core --case-id SB-PY-SV-001
 A working adapter on PY-SV-001 should produce at least one finding with:
 - `path`: `tools/reference_fetcher.py`
 - `mappedKind`: `ssrf`
-- `startLine`/`endLine` overlapping lines 15-34
+- `startLine`/`endLine` overlapping the annotated vulnerable region
 
-If the runner shows `TP=1`, the adapter is working correctly.
+If the runner shows a target hit on the case, the adapter is working correctly.
+
+### PR mode smoke test
+
+If the adapter implements `scan_pr_with_metadata`, or if you want to verify fallback PR behavior:
+
+```bash
+python scripts/run.py --scanner <name> --mode pr --track core --case-id SB-PY-SV-001
+```
 
 ### Full benchmark
 
@@ -405,7 +422,7 @@ Before submitting an adapter:
 
 - [ ] `get_version()` returns a version string or `"unknown"`
 - [ ] `scan()` returns `list[dict]` with all required fields
-- [ ] `mappedKind` is one of: `command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`, `unmapped`
+- [ ] `mappedKind` is one of: `command_injection`, `path_traversal`, `ssrf`, `auth_bypass`, `authz_bypass`, `sql_injection`, `unmapped`
 - [ ] `path` is relative to scan_root with forward slashes
 - [ ] `startLine` and `endLine` are 1-indexed integers
 - [ ] Scanner-not-found returns `[]` (no crash)
@@ -414,7 +431,8 @@ Before submitting an adapter:
 - [ ] No scanner artifacts left in scan_root after scan
 - [ ] No source files modified in scan_root after scan
 - [ ] Unit tests pass without the scanner installed
-- [ ] `python scripts/run.py --scanner <name> --track core --case-id SB-PY-SV-001` shows `TP=1`
+- [ ] `python scripts/run.py --scanner <name> --track core --case-id SB-PY-SV-001` shows a target hit
+- [ ] PR mode works via fallback or native support if the scanner claims PR awareness
 
 ---
 
@@ -473,7 +491,7 @@ Implement `scan_pr_with_metadata` when your scanner:
 - Produces different output when given diff context vs scanning a full tree
 - Benefits from seeing both base and head simultaneously
 
-For traditional SAST tools (Semgrep, Bandit), the fallback approach is usually sufficient.
+For traditional SAST tools (Semgrep, Bandit), the fallback approach is usually sufficient. Do not add a fake `scan_pr_with_metadata` implementation just to satisfy the interface.
 
 ---
 
