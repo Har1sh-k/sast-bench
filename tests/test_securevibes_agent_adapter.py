@@ -27,10 +27,15 @@ def test_map_sandboxescape():
     assert adapter.map_vuln_class("sandboxescape") == "path_traversal"
 
 
+def test_map_auth_classes():
+    assert adapter.map_vuln_class("authbypass") == "auth_bypass"
+    assert adapter.map_vuln_class("brokenauthz") == "authz_bypass"
+    assert adapter.map_vuln_class("sqlinjection") == "sql_injection"
+
+
 def test_map_unmapped_class():
     assert adapter.map_vuln_class("xss") == "unmapped"
-    assert adapter.map_vuln_class("authbypass") == "unmapped"
-    assert adapter.map_vuln_class("brokenauthz") == "unmapped"
+    assert adapter.map_vuln_class("abuse") == "unmapped"
 
 
 def test_map_pattern_fallback_title_ssrf():
