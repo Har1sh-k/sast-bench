@@ -17,13 +17,13 @@ from pathlib import Path
 
 ADAPTER_VERSION = "1.2.0"
 
-SECUREVIBES_AGENT_DIR = Path(os.environ.get("SECUREVIBES_AGENT_DIR", ""))
-if not SECUREVIBES_AGENT_DIR or not SECUREVIBES_AGENT_DIR.exists():
+_sv_env = os.environ.get("SECUREVIBES_AGENT_DIR", "").strip()
+if _sv_env:
+    SECUREVIBES_AGENT_DIR = Path(_sv_env)
+else:
     # Try to find it as a sibling of the sast-bench repo
     _repo_root = Path(__file__).resolve().parent.parent.parent
-    _candidate = _repo_root.parent / "securevibes-agent"
-    if _candidate.exists():
-        SECUREVIBES_AGENT_DIR = _candidate
+    SECUREVIBES_AGENT_DIR = _repo_root.parent / "securevibes-agent"
 
 # fnm-managed Node.js isn't always on the Windows system PATH that Python
 # inherits.  Resolve a stable node directory once at import time.
