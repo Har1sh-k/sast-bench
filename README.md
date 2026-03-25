@@ -48,6 +48,8 @@ python scripts/report.py results/<results-file>.json
 python scripts/report.py results/<results-file>.json --verbose
 ```
 
+PR simulation mode is documented in [docs/PR_MODE.md](docs/PR_MODE.md).
+
 ## Setup
 
 ### Requirements
@@ -72,6 +74,16 @@ After setup, validate the full benchmark surface with:
 ```bash
 python scripts/validate.py --track full
 ```
+
+### PR Simulation Mode
+
+SASTbench also supports benchmarked PR simulation with:
+
+```bash
+python scripts/run.py --scanner semgrep --mode pr --track core
+```
+
+PR mode compares a clean base tree with a vulnerable head tree and measures whether the scanner reports the introduced vulnerability as a review finding. See [docs/PR_MODE.md](docs/PR_MODE.md) for the execution model, metrics, case requirements, and adapter behavior.
 
 ### Tests
 
@@ -148,7 +160,17 @@ Verbose mode (`--verbose`) also shows the underlying benchmark internals: Recall
 
 **Core Track** cases are closed-world synthetic benchmarks. Every finding outside the annotated region is a known false positive. Strict scoring labels apply.
 
-**Full Track** cases are real-world repo snapshots with one disclosed vulnerability. Additional findings may be legitimate issues in the repo. The benchmark only scores whether the disclosed target was detected — it does not claim that every other finding is wrong.
+**Full Track** cases are real-world repo snapshots with one disclosed vulnerability. Additional findings may be legitimate issues in the repo. The benchmark only scores whether the disclosed target was detected - it does not claim that every other finding is wrong.
+
+### PR mode scoring language
+
+PR mode uses a different top-level summary:
+
+- **Introduced Target Hit Rate**: did the scanner report the vulnerability introduced by the simulated PR?
+- **Review Noise**: new-in-head review findings that did not match the introduced target
+- **Capability Noise**: review findings that hit capability-safe regions
+
+See [docs/PR_MODE.md](docs/PR_MODE.md) for the full PR-mode model and output schema.
 
 ## OWASP Agentic Top 10 Alignment
 
