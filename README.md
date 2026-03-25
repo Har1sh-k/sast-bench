@@ -125,14 +125,15 @@ Both should show `TARGET HIT` for SB-PY-SV-001 (SSRF in reference fetcher).
 
 ## Baseline Reference Results
 
-These are approximate expected results for the official adapters on the Core Track, useful for sanity-checking your setup:
+These were measured on March 24, 2026 against the Core Track using the current official adapters in this repository:
 
-| Adapter | Recall | Precision | Cap FP Rate | Agentic Score | Notes |
-|---------|--------|-----------|-------------|---------------|-------|
-| `semgrep` | ~55% | ~45% | 33-66% | ~40% | Best coverage across all 3 languages |
-| `bandit` | ~22% | ~40% | 0% | 0% | Python-only; returns `[]` for TS/Rust cases |
+| Adapter | Version | Rule Set Used | Recall | Precision | Cap FP Rate | Agentic Score | Notes |
+|---------|---------|---------------|--------|-----------|-------------|---------------|-------|
+| `semgrep` | `1.136.0` | `semgrep scan --config auto --lang <language>` | `14.3%` | `50.0%` | `0.0%` | `0.0%` | 2 target hits, 2 additional findings, 0 mixed-intent hits |
+| `bandit` | `1.8.6` | `bandit -r -f json` (default built-in Bandit rules; no custom config) | `14.3%` | `33.3%` | `16.7%` | `0.0%` | Python-only; TS/Rust cases are unsupported and still score as misses across the entire Core Track |
 
-These numbers vary slightly across semgrep/bandit versions and rule sets. They are reference points, not exact thresholds.
+Semgrep `auto` fetches the active Semgrep registry bundle and may change over time.
+Bandit results above use the default built-in rule set because the official adapter does not pass `-c`, `-t`, or `-s`.
 
 ## V1 Canonical Vulnerability Kinds
 
