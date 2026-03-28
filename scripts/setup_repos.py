@@ -51,6 +51,20 @@ def run_git(args: list[str], *, timeout: int) -> subprocess.CompletedProcess[str
     return subprocess.run(args, capture_output=True, text=True, timeout=timeout)
 
 
+def disable_lfs(target_dir: Path) -> None:
+    """Disable git-lfs filters so checkouts work without lfs installed."""
+    for key, val in [
+        ("filter.lfs.clean", "cat"),
+        ("filter.lfs.smudge", "cat"),
+        ("filter.lfs.process", ""),
+        ("filter.lfs.required", "false"),
+    ]:
+        run_git(
+            ["git", "-C", str(target_dir), "config", "--local", key, val],
+            timeout=10,
+        )
+
+
 def ensure_repo_checkout(repo: str, commit: str, target_dir: Path) -> bool:
     """Clone or repair a snapshot, then checkout the requested commit."""
     if target_dir.exists():
@@ -58,6 +72,8 @@ def ensure_repo_checkout(repo: str, commit: str, target_dir: Path) -> bool:
         if not git_dir.exists():
             print(f"    FAILED: existing directory is not a git repo: {target_dir}")
             return False
+
+        disable_lfs(target_dir)
 
         if has_checked_out_files(target_dir):
             print(f"    Ready: {target_dir.name}")
@@ -82,6 +98,8 @@ def ensure_repo_checkout(repo: str, commit: str, target_dir: Path) -> bool:
         if clone_result.returncode != 0:
             print(f"FAILED: {clone_result.stderr.strip()}")
             return False
+
+        disable_lfs(target_dir)
 
     print(f"checking out {commit[:8]}...", end=" ", flush=True)
     checkout_result = run_git(
