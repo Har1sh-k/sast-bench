@@ -1,7 +1,9 @@
 """SASTbench adapter for securevibes-agent.
 
 Runs securevibes-agent in bootstrap mode on a case directory and normalizes
-output to the benchmark's canonical finding format.
+output to the benchmark's canonical finding format.  For PR mode, creates a
+temporary git repository from the vendored base/head trees and invokes
+securevibes-agent's native ``pr`` command with diff-aware analysis.
 
 securevibes-agent is an LLM-backed security scanner that produces file-level
 findings (no line numbers). The adapter maps vulnerability classes to canonical
@@ -13,9 +15,10 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-ADAPTER_VERSION = "1.2.0"
+ADAPTER_VERSION = "1.3.0"
 
 _sv_env = os.environ.get("SECUREVIBES_AGENT_DIR", "").strip()
 if _sv_env:
@@ -183,6 +186,42 @@ def _read_finding_files(findings_dir: Path) -> list[dict]:
     return records
 
 
+def _normalize_findings(kb_records: list[dict], scan_root: Path) -> list[dict]:
+    """Convert KB finding records into SASTbench-normalized finding dicts."""
+    findings = []
+    scan_root_str = str(scan_root).replace("\\", "/")
+
+    for record in kb_records:
+        file_path = record.get("file_path", "")
+        if not file_path:
+            continue
+
+        # Normalize path relative to scan_root
+        rel_path = file_path.replace("\\", "/")
+        if rel_path.startswith(scan_root_str):
+            rel_path = rel_path[len(scan_root_str):].lstrip("/")
+        rel_path = rel_path.lstrip("./")
+
+        vuln_class = record.get("vulnerability_class", "")
+        title = record.get("title", "")
+        mapped_kind = map_vuln_class(vuln_class, title)
+
+        abs_file = scan_root / rel_path
+        end_line = _count_lines(abs_file) if abs_file.exists() else 9999
+
+        findings.append({
+            "ruleId": f"sv-agent:{vuln_class}:{record.get('id', 'unknown')}",
+            "mappedKind": mapped_kind,
+            "path": rel_path,
+            "startLine": 1,
+            "endLine": end_line,
+            "severity": severity_map(record.get("severity", "medium")),
+            "message": title,
+        })
+
+    return findings
+
+
 def _run_scan(scan_root: Path, language: str) -> tuple[list[dict], list[str], str, str, str | None]:
     """Run securevibes-agent and return (findings, command, stdout, stderr, skipReason)."""
     scan_root = scan_root.resolve()
@@ -212,9 +251,6 @@ def _run_scan(scan_root: Path, language: str) -> tuple[list[dict], list[str], st
 
     print("\n", flush=True)
     try:
-        # Let stdout and stderr stream to the terminal so the user sees
-        # progress in real-time.  We read findings from the .securevibes/
-        # knowledge-base files afterward instead of parsing JSON stdout.
         subprocess.run(
             cmd,
             cwd=str(SECUREVIBES_AGENT_DIR),
@@ -231,40 +267,7 @@ def _run_scan(scan_root: Path, language: str) -> tuple[list[dict], list[str], st
     if sv_dir.exists():
         shutil.rmtree(sv_dir, ignore_errors=True)
 
-    # --- Normalize to SASTbench format ---
-    findings = []
-    scan_root_str = str(scan_root).replace("\\", "/")
-
-    for record in kb_records:
-        file_path = record.get("file_path", "")
-        if not file_path:
-            continue
-
-        # Normalize path relative to scan_root
-        rel_path = file_path.replace("\\", "/")
-        if rel_path.startswith(scan_root_str):
-            rel_path = rel_path[len(scan_root_str):].lstrip("/")
-        rel_path = rel_path.lstrip("./")
-
-        vuln_class = record.get("vulnerability_class", "")
-        title = record.get("title", "")
-        mapped_kind = map_vuln_class(vuln_class, title)
-
-        # securevibes-agent provides file-level findings without line numbers.
-        # Use whole-file range so scoring can match by path overlap.
-        abs_file = scan_root / rel_path
-        end_line = _count_lines(abs_file) if abs_file.exists() else 9999
-
-        findings.append({
-            "ruleId": f"sv-agent:{vuln_class}:{record.get('id', 'unknown')}",
-            "mappedKind": mapped_kind,
-            "path": rel_path,
-            "startLine": 1,
-            "endLine": end_line,
-            "severity": severity_map(record.get("severity", "medium")),
-            "message": title,
-        })
-
+    findings = _normalize_findings(kb_records, scan_root)
     return findings, cmd, "", "", None
 
 
@@ -285,3 +288,176 @@ def scan_with_metadata(scan_root: Path, language: str) -> dict:
         "rawStderr": stderr,
         "skipReason": skip_reason,
     }
+
+
+# ---------------------------------------------------------------------------
+# PR mode — native diff-aware scanning
+# ---------------------------------------------------------------------------
+
+def _create_pr_repo(base_root: Path, head_root: Path) -> tuple[Path, str, str]:
+    """Create a temp git repo with base and head as separate commits.
+
+    Returns (repo_path, base_sha, head_sha).  The caller is responsible for
+    cleaning up the temporary directory.
+    """
+    tmp = Path(tempfile.mkdtemp(prefix="sv-pr-"))
+
+    def _git(*args: str) -> str:
+        return subprocess.run(
+            ["git", *args],
+            cwd=str(tmp),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+    _git("init")
+    _git("config", "user.email", "bench@sastbench.dev")
+    _git("config", "user.name", "SASTbench")
+
+    # Commit 1: base tree
+    for src in base_root.rglob("*"):
+        if src.is_file():
+            rel = src.relative_to(base_root)
+            dst = tmp / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+    _git("add", "-A")
+    _git("commit", "-m", "base", "--allow-empty")
+    base_sha = _git("rev-parse", "HEAD")
+
+    # Commit 2: head tree — replace all files
+    for item in tmp.iterdir():
+        if item.name == ".git":
+            continue
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+
+    for src in head_root.rglob("*"):
+        if src.is_file():
+            rel = src.relative_to(head_root)
+            dst = tmp / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+    _git("add", "-A")
+    _git("commit", "-m", "head", "--allow-empty")
+    head_sha = _git("rev-parse", "HEAD")
+
+    return tmp, base_sha, head_sha
+
+
+def scan_pr_with_metadata(
+    base_root: Path,
+    head_root: Path,
+    changed_files: list[str],
+    diff_text: str,
+    language: str | None = None,
+    case: dict | None = None,
+) -> dict:
+    """Run securevibes-agent in native PR mode on a temp git repo.
+
+    Creates a temporary repository with two commits (base → head), then
+    invokes ``securevibes-agent pr --base <base_sha> --head <head_sha>``
+    so the scanner performs diff-aware analysis.
+    """
+    if not SECUREVIBES_AGENT_DIR or not SECUREVIBES_AGENT_DIR.exists():
+        return {
+            "reviewFindings": [],
+            "baselineFindings": [],
+            "headFindings": [],
+            "commandInvocation": [],
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": "",
+            "skipReason": "securevibes-agent not found (set SECUREVIBES_AGENT_DIR)",
+        }
+
+    repo_path = None
+    try:
+        repo_path, base_sha, head_sha = _create_pr_repo(base_root, head_root)
+
+        llm_model = os.environ.get("SECUREVIBES_LLM_MODEL", "anthropic/claude-sonnet-4-5")
+        env = _build_env()
+        npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
+
+        # First run bootstrap to establish the baseline threat model on the
+        # base commit so that the PR scan has a knowledge-base to diff against.
+        bootstrap_cmd = [
+            npx_cmd, "tsx",
+            str(SECUREVIBES_AGENT_DIR / "src" / "runtime" / "cli.ts"),
+            "bootstrap",
+            "--repo", str(repo_path),
+            "--analysis-mode", "llm",
+            "--llm-model", llm_model,
+        ]
+
+        # Checkout base, run bootstrap
+        subprocess.run(
+            ["git", "checkout", base_sha],
+            cwd=str(repo_path), capture_output=True, check=True,
+        )
+        print("\n  [sv-agent PR] bootstrapping base...", flush=True)
+        subprocess.run(bootstrap_cmd, cwd=str(SECUREVIBES_AGENT_DIR), env=env)
+
+        # Read baseline findings
+        sv_dir = repo_path / ".securevibes"
+        base_kb = _read_finding_files(sv_dir / "findings") if sv_dir.exists() else []
+        baseline_findings = _normalize_findings(base_kb, repo_path)
+
+        # Checkout head for PR scan
+        subprocess.run(
+            ["git", "checkout", head_sha],
+            cwd=str(repo_path), capture_output=True, check=True,
+        )
+
+        # Run PR mode
+        pr_cmd = [
+            npx_cmd, "tsx",
+            str(SECUREVIBES_AGENT_DIR / "src" / "runtime" / "cli.ts"),
+            "pr",
+            "--repo", str(repo_path),
+            "--base", base_sha,
+            "--head", head_sha,
+            "--analysis-mode", "llm",
+            "--llm-model", llm_model,
+        ]
+
+        print("  [sv-agent PR] running PR scan...", flush=True)
+        subprocess.run(pr_cmd, cwd=str(SECUREVIBES_AGENT_DIR), env=env)
+
+        # Read findings after PR scan
+        pr_kb = _read_finding_files(sv_dir / "findings") if sv_dir.exists() else []
+        head_findings = _normalize_findings(pr_kb, repo_path)
+
+        # Review findings = new in head that weren't in baseline
+        base_ids = {r.get("id") for r in base_kb}
+        review_records = [r for r in pr_kb if r.get("id") not in base_ids]
+        review_findings = _normalize_findings(review_records, repo_path)
+
+        return {
+            "reviewFindings": review_findings,
+            "baselineFindings": baseline_findings,
+            "headFindings": head_findings,
+            "commandInvocation": pr_cmd,
+            "exitCode": 0,
+            "rawStdout": "",
+            "rawStderr": "",
+            "skipReason": None,
+        }
+
+    except FileNotFoundError:
+        return {
+            "reviewFindings": [],
+            "baselineFindings": [],
+            "headFindings": [],
+            "commandInvocation": [],
+            "exitCode": None,
+            "rawStdout": "",
+            "rawStderr": "",
+            "skipReason": "npx_not_found",
+        }
+    finally:
+        if repo_path and repo_path.exists():
+            shutil.rmtree(repo_path, ignore_errors=True)
