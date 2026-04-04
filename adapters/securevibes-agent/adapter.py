@@ -19,6 +19,7 @@ import tempfile
 from pathlib import Path
 
 ADAPTER_VERSION = "1.3.0"
+LLM_MODEL = os.environ.get("SECUREVIBES_LLM_MODEL", "anthropic/claude-sonnet-4-5")
 
 _sv_env = os.environ.get("SECUREVIBES_AGENT_DIR", "").strip()
 if _sv_env:
