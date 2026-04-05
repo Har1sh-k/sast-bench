@@ -38,8 +38,8 @@
   },
   "prSimulation": {
     "mode": "git_commit_pair",
-    "baseCommit": "4a201f4c6938262aacdc96dfdf60890605463d80",
-    "headCommit": "ef9c7b1c094b9d345a322ecd4ac679b65c4d2e3f"
+    "baseCommit": "14c4a7a2934797298bf5dc06f5a870c94c941827",
+    "headCommit": "554c51859e6a93c913642640c51dacee7aa65f01"
   },
   "standards": {
     "owaspAgenticTop10": {
