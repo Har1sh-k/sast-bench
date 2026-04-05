@@ -99,6 +99,10 @@
       "$ref": "#/$defs/realWorldMeta",
       "description": "Metadata for real_world_disclosed cases"
     },
+    "fixValidation": {
+      "$ref": "#/$defs/fixValidation",
+      "description": "Optional fix verification mode. Default is slice_absent."
+    },
     "prSimulation": {
       "$ref": "#/$defs/prSimulation",
       "description": "Optional PR simulation metadata for PR benchmark mode"
