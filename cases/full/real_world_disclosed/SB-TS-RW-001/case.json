@@ -44,6 +44,21 @@
       ]
     }
   },
+  "fixValidation": {
+    "mode": "mitigation_anchor_present",
+    "anchors": [
+      {
+        "path": "packages/opencode/src/server/server.ts",
+        "mustContainAll": [
+          "cors({",
+          "origin(input)",
+          "http://localhost:",
+          "http://127.0.0.1:",
+          "opencode.ai"
+        ]
+      }
+    ]
+  },
   "prSimulation": {
     "mode": "git_commit_pair",
     "baseCommit": "7b52160bff1221b3290b7cfacf60f0c3f39cbb78",
