@@ -23,6 +23,10 @@ official-adapters = [
   "semgrep>=1.77.0",
 ]
 
+[tool.setuptools]
+# Harness is script-based; avoid flat-layout auto-discovery of cases/, adapters/, etc.
+packages = []
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = [

@@ -56,7 +56,7 @@ def test_semgrep_scan_with_metadata(monkeypatch, tmp_path):
     monkeypatch.setattr(semgrep.subprocess, "run", fake_run)
     result = semgrep.scan_with_metadata(scan_root, "python")
 
-    assert result["commandInvocation"][:3] == ["semgrep", "scan", "--json"]
+    assert result["commandInvocation"][:4] == ["semgrep", "scan", "--json", "--config"]
     assert result["exitCode"] == 1
     assert result["rawStderr"] == "scanner stderr"
     assert result["skipReason"] is None

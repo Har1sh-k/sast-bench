@@ -30,3 +30,4 @@ results/
 
 # case-build scratch dirs
 .*_build/
+sastbench.egg-info/

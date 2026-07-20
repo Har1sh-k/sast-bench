@@ -55,9 +55,13 @@ def get_version() -> str:
     try:
         result = subprocess.run(
             ["semgrep", "--version"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env={**__import__("os").environ, "SEMGREP_SEND_METRICS": "off"},
         )
-        return result.stdout.strip()
+        text = (result.stdout or result.stderr or "").strip()
+        return text.split("\n")[0] if text else "unknown"
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return "unknown"
 
@@ -93,41 +97,45 @@ def _parse_findings(output: dict, scan_root: Path) -> list[dict]:
         abs_path = match.get("path", "")
         rel_path = abs_path.replace("\\", "/")
         if rel_path.startswith(scan_root_str):
-            rel_path = rel_path[len(scan_root_str):].lstrip("/")
+            rel_path = rel_path[len(scan_root_str) :].lstrip("/")
 
         rule_id = match.get("check_id", "")
         mapped_kind = map_rule_to_kind(rule_id)
 
-        findings.append({
-            "ruleId": rule_id,
-            "mappedKind": mapped_kind,
-            "path": rel_path,
-            "startLine": match.get("start", {}).get("line", 1),
-            "endLine": match.get("end", {}).get("line", 1),
-            "severity": severity_map(match.get("extra", {}).get("severity", "")),
-            "message": match.get("extra", {}).get("message", ""),
-        })
+        findings.append(
+            {
+                "ruleId": rule_id,
+                "mappedKind": mapped_kind,
+                "path": rel_path,
+                "startLine": match.get("start", {}).get("line", 1),
+                "endLine": match.get("end", {}).get("line", 1),
+                "severity": severity_map(
+                    match.get("extra", {}).get("severity", "")
+                ),
+                "message": match.get("extra", {}).get("message", ""),
+            }
+        )
 
     return findings
 
 
 def scan_with_metadata(scan_root: Path, language: str) -> dict:
     """Run Semgrep and return findings plus raw output metadata."""
-    lang_flag = {
-        "python": "python",
-        "typescript": "typescript",
-        "rust": "rust",
-    }.get(language, language)
+    # --lang is for -e/--pattern mode only; with --config it errors on
+    # current Semgrep ("-e/--pattern and -l/--lang must both be specified").
     command = [
-        "semgrep", "scan",
+        "semgrep",
+        "scan",
         "--json",
-        "--config", "auto",
-        "--lang", lang_flag,
+        "--config",
+        "auto",
         str(scan_root),
     ]
 
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(
+            command, capture_output=True, text=True, timeout=180
+        )
     except FileNotFoundError:
         message = "semgrep not found - install with: pip install semgrep"
         print(f"    {message}")
