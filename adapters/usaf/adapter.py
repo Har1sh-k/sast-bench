@@ -310,11 +310,13 @@ def scan_with_metadata(scan_root: Path, language: str) -> dict:
             lang,
             "--rules",
             rules,
-            # Empty string disables BASE_EXCLUDE_PATTERNS so small case
-            # trees are not over-filtered (usaf analyze default excludes).
-            "--exclude-patterns",
-            "",
         ]
+        # Optional. Unset → USAF default excludes (skips node_modules etc.).
+        # Set to empty string to disable excludes (useful for tiny Core cases).
+        if "USAF_EXCLUDE_PATTERNS" in os.environ:
+            command.extend(
+                ["--exclude-patterns", os.environ["USAF_EXCLUDE_PATTERNS"]]
+            )
         try:
             result = subprocess.run(
                 command,

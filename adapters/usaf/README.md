@@ -9,6 +9,7 @@ Runs JFrog USAF (`usaf_cli` / `usaf analyze`) and maps SARIF findings to SASTben
 | `USAF_CLI` | Absolute path to `usaf_cli` (or `usaf`) |
 | `USAF_RULES_JSON` | Absolute path to `dist/rules.json` from a usaf-rules checkout |
 | `USAF_TIMEOUT` | Optional per-case timeout seconds (default `300`) |
+| `USAF_EXCLUDE_PATTERNS` | Optional. If unset, USAF default excludes apply. Set to empty string to scan everything (useful for tiny Core fixtures). |
 
 ## Supported languages
 
